@@ -1,0 +1,353 @@
+﻿
+<!DOCTYPE html>
+<html lang="ch">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1">
+    <title>大模型的探索与实践</title>
+    <style>
+      #shuffle-container {
+        visibility: hidden;
+      }
+    </style>
+    <noscript><style>
+      #shuffle-container {
+        visibility: visible;
+      }
+    </style></noscript>
+    <script>
+      // Shuffle CAs
+      document.addEventListener("DOMContentLoaded", function() {
+        const container = document.getElementById("shuffle-container");
+        const children = Array.from(container.children);
+
+        // 50% chance to shuffle
+        if (Math.random() <= 0.5) {
+          container.insertBefore(children[4], children[3]);
+        }
+
+        // Now unhide them
+        container.style.visibility = "visible";
+      });
+    </script>
+    <!-- bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <!-- Google fonts -->
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,300' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+  </head>
+  <body>
+    <!-- <div id="unreleased-message" style="text-align: center;">
+      This site is under active construction, and contents are subject to change.
+      <br>
+      The Spring 2024 offering of the course is <a href="https://stanford-cs336.github.io/spring2024/index.html">archived here</a>.
+    </div> -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand brand">大模型的探索与实践</a>
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav navbar-right">
+            <li class="navbar-right">
+              <a href="index.html#coursework">Coursework</a>
+            </li>
+            <li class="navbar-right">
+              <a href="index.html#schedule">Schedule</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <div id="header" style="text-align:center">
+      <!-- <a href="https://nlp.stanford.edu/">
+        <img src="images/stanford-nlp-logo-new.jpg" class="logo-left">
+      </a> -->
+      <!-- <a href="https://crfm.stanford.edu">
+        <img src="images/crfm-rgb.png" class="logo-right">
+      </a> -->
+      <h1>大模型的探索与实践</h1>
+      <h3>上海财经大学 / 2025秋</h3>
+    </div>
+    <!-- Intro -->
+    <!--<div class="container sec" id="intro">
+      <div style="text-align: center;">
+        <font style="color: #8c1515; font-weight: bold; font-size: 1.2em"> 往年课程请见 <a href="https://stanford-cs336.github.io/spring2024/index.html">archived here</a>. </font>
+      </div>
+    </div>
+-->
+    <!-- Staff Info -->
+    <div class="container sec" id="people">
+      <!-- <div class="row"> -->
+      <div class="col" id="shuffle-container">
+        <h2>课程工作人员</h2>
+        <div class="instructor">
+          <a href="https://www.tengjiaye.com">
+            <div class="instructorphoto">
+              <img src="../pic2.jpg">
+            </div>
+            <div>滕佳烨</div>
+          </a>
+          <div>主讲教师</div>
+        </div>
+        <div class="instructor">
+          <a href="TBD">
+            <div class="instructorphoto">
+              <img src="images/TBD.jpeg">
+            </div>
+            <div>TBD</div>
+          </a>
+          <div>助教</div>
+        </div>
+      </div>
+    </div>
+    <!-- Logistics -->
+    <div class="sechighlight">
+      <div class="container sec" id="logistics">
+        <h2>课程安排</h2>
+        <ul>
+          <li>
+            <b>课程时间：</b> 周一 18:00-19:40, 科研实验大楼B106；共十六周。
+          </li>
+          <li>
+            <b>答疑时间：</b> 周一 19:40-21:00，或提前邮件联系时间
+          </li>
+          <li>
+            <b>考核方式：</b> 平时成绩 30% + 开题报告 20% + 期末展示 50%
+          </li>
+          <li>
+            <b>联系方式：</b> 课程相关问题请用企业微信联系；个人相关问题请用邮件 (tengjiaye@sufe.edu.cn) 联系
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>
+  <!-- Content -->
+  <div class="container sec" id="content">
+    <h2>课程主要内容</h2>
+    <h3>课程目标</h3>
+    <p> 课程将介绍大模型的基础知识，包括它们的工作原理和发展历程，以及如何根据具体需求选择合适的工具。学生将通过分析大模型在自然语言处理、计算机视觉和推荐系统等领域的应用案例，了解这些工具如何被用来解决实际问题。课程还包括实践项目，让学生有机会亲自操作大模型工具，将理论知识转化为实际操作技能。</p>
+    <h3>前置知识</h3>
+    <ul>
+      <li>
+        <b>软件</b>
+        <p>本课程主要使用 Python 作为编程语言。虽然课程中大部分代码由大模型直接生成，但读懂 Python 代码、理解代码的运行逻辑仍然可以提升同学们的课程理解。</p>
+      </li>
+      <li>
+        <b>数学知识</b>
+        <p>本课程在最后几周将会使用到线性代数（特别是矩阵运算）的相关知识。但课程考核中并不包含相关内容。掌握相关知识能够加强对本课程后半部分关于模型的理解。</p>
+      <li>
+        <b>机器学习</b> 
+        <p>本课程在最后几周将会使用到机器学习（特别是 transformer）的相关知识。但课程考核中并不包含相关内容。</p>
+      </li>
+    </ul>
+
+  </div>
+
+  <!-- Schedule -->
+  <!-- Note the margin-top:-20px and the <br> serve to make the #schedule hyperlink display correctly (with the h2 header visible) -->
+  <div class="container sec" id="schedule" style="margin-top:-20px">
+    <br>
+    <h2>课程内容</h2>
+    <table class="table">
+      <colgroup>
+        <col style="width:5%">
+        <col style="width:15%">
+        <col style="width:35%">
+        <col style="width:15%">
+        <col style="width:20%">
+      </colgroup>
+      <thead>
+        <tr class="active">
+          <th>#</th>
+          <th>日期</th>
+          <th>内容</th>
+          <th>材料</th>
+          <th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td> 1 </td>
+          <td> 2025/09/08 </td>
+          <td> Overview, Vibe Coding</td>
+          <td> <a href="C1-introduction.pdf">lec1.pdf</a> </td>
+          <td>
+            作业一
+          </td>
+        </tr>
+        <tr>
+          <td> 2 </td>
+          <td> 2025/09/15 </td>
+          <td> Prompts, Github </td>
+          <td> <a href="C2-basis.pdf">lec2.pdf</a> </td>
+          <td> 作业二 </td>
+        </tr>
+        <tr>
+          <td> 3 </td>
+          <td> 2025/09/22 </td>
+          <td> Agent, OpenManus </td>
+          <td> TBD</td>
+          <td> 作业三</td>
+        </tr>
+        <tr>
+          <td> 4 </td>
+          <td> 2025/09/29 </td>
+          <td> Academic Writting, PASA </td>
+          <td> TBD</td>
+          <td> 作业四</td>
+        </tr>
+        <tr>
+          <td> 5 </td>
+          <td> 2025/10/06</td>
+          <td> 国庆假期</td>
+          <td> /</td>
+          <td> /</td>
+        </tr>
+        <tr>
+          <td> 6 </td>
+          <td>2025/10/13</td>
+          <td>开题报告展示</td>
+          <td>/ </td>
+          <td>/ </td>
+        </tr>
+        <tr>
+          <td> 7 </td>
+          <td>2025/10/20</td>
+          <td>Agent, Coze</td>
+          <td> TBD</td>
+          <td>作业五</td>
+        </tr>
+        <tr>
+          <td> 8 </td>
+          <td>2025/10/27</td>
+          <td>Multi-modal, tokenization</td>
+          <td> TBD </td>
+          <td>作业六</td>
+        </tr>
+        <tr>
+          <td> 9 </td>
+          <td>2025/11/3</td>
+          <td>Fine-tuning, In-Context Learning</td>
+          <td> TBD</td>
+          <td>
+            作业七
+          </td>
+        </tr>
+        <tr>
+          <td> 10  </td>
+          <td>2025/11/10</td>
+          <td>RL, RLHF</td>
+         <td>TBD</td>
+          <td>  作业八 </td>
+        </tr>
+        <tr>
+          <td> 11 </td>
+          <td>2025/11/17</td>
+          <td>RAG, Reasoning & CoT</td>
+          <td> TBD </td>
+          <td>作业九</td>
+        </tr>
+        <tr>
+          <td> 12 </td>
+          <td>2025/11/24</td>
+          <td>Neural Networks, Transformers</td>
+          <td> TBD </td>
+          <td>作业十</td>
+        </tr>
+        <tr>
+          <td> 13 </td>
+          <td>2025/12/1</td>
+          <td>GPT, BERT, Pretraining</td>
+          <td> TBD </td>
+          <td>作业十一</td>
+        </tr>
+        <tr>
+          <td> 14 </td>
+          <td>2025/12/8</td>
+          <td>Scaling Law</td>
+          <td> TBD </td>
+          <td>作业十二</td>
+        </tr>
+        <tr>
+          <td> 15 </td>
+          <td>2025/12/15</td>
+          <td>LLM: History and Future</td>
+          <td>TBD</td>
+          <td>/</td>
+        </tr>
+        <tr>
+          <td> 16 </td>
+          <td>2025/12/22</td>
+          <td>期末展示</td>
+          <td>/</td>
+          <!-- <td> <a href="https://github.com/stanford-cs336/spring2025-lectures/blob/main/nonexecutable/Lecture%2016%20-%20Alignment%20by%20RLHF.pdf">lecture 16.pdf</a></td> -->
+          <td>/</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- jQuery and Bootstrap -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+  
+
+    <!-- Coursework -->
+  <!-- Note the margin-top:-20px and the <br> serve to make the #coursework hyperlink display correctly (with the h2 header visible) -->
+  <div class="sechighlight">
+    <div class="container sec" id="coursework" style="margin-top:-20px">
+      <br>
+      <h2>作业</h2>
+      TBD，优秀作业内容将会公布在本页面中。每位学生需至少完成4次作业（一共12次）。
+      <!-- <ul>
+        <li>
+          <a href="https://github.com/stanford-cs336/assignment1-basics/tree/main"><b>Assignment 1</b>: Basics</a> 
+          [<a href="https://github.com/stanford-cs336/assignment1-basics-leaderboard/tree/master">leaderboard</a>]
+        </li>
+        <ul>
+          <li>Implement all of the components (tokenizer, model architecture, optimizer) necessary to train a standard Transformer language model. </li>
+          <li> Train a minimal language model. </li>
+        </ul>
+	      <li><a href="https://github.com/stanford-cs336/assignment2-systems/tree/main"><b>Assignment 2</b>: Systems</a>
+        [<a href="https://github.com/stanford-cs336/assignment2-systems-leaderboard/tree/main">leaderboard</a>]
+        </li>
+	      <ul>
+          <li>Profile and benchmark the model and layers from Assignment 1 using advanced tools, optimize Attention with your own Triton implementation of FlashAttention2.</li>
+          <li>Build a memory-efficient, distributed version of the Assignment 1 model training code.</li>
+        </ul>
+        <li><a href="https://github.com/stanford-cs336/assignment3-scaling/tree/main"><b>Assignment 3</b>: Scaling</a></li>
+        <ul>
+          <li>Understand the function of each component of the Transformer.</li>
+          <li>Query a training API to fit a scaling law to project model scaling.</li>
+        </ul>
+        <li>
+          <a href="https://github.com/stanford-cs336/assignment4-data/tree/main"><b>Assignment 4</b>: Data</a>
+          [<a href="https://github.com/stanford-cs336/assignment4-data-leaderboard">leaderboard</a>]
+        </li>
+        <ul>
+          <li>Convert raw Common Crawl dumps into usable pretraining data. </li>
+          <li> Perform filtering and deduplication to improve model performance. </li>
+        </ul>
+        <li><a href="https://github.com/stanford-cs336/assignment5-alignment"><b>Assignment 5</b>: Alignment and Reasoning RL</li></a>
+        <ul>
+          <li> Apply supervised finetuning and reinforcement learning to train LMs to reason when solving math problems. </li>
+          <li>
+            <b><a href="https://github.com/stanford-cs336/assignment5-alignment/blob/main/cs336_spring2025_assignment5_supplement_safety_rlhf.pdf">Optional Part 2</a></b>: implement and apply safety alignment methods such as DPO.
+          </li>
+        </ul>
+      </ul> -->
+
+    </div>
+  </div>
+网页模板致谢 https://stanford-cs336.github.io/spring2025/
+  <!-- Add whitespace to ensure schedule is visible when banner is active -->
+  <!-- <div style="height: 200px;"></div> -->
+  </body>
+</html>
