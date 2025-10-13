@@ -1,0 +1,2837 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>规则捉迷藏 — 完整版</title>
+<meta name="description" content="基于用户提供剧本的交互式文字冒险（单文件）。" />
+<style>
+  :root{
+    --bg:#071018; --panel:#0b1620; --muted:#9db0bd; --accent:#e6a87e; --danger:#ff6b6b; --good:#8fe0ff;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: "Noto Sans SC","PingFang SC","Helvetica Neue", Arial, sans-serif;
+    background:linear-gradient(180deg,#041018,#07121a); color:#eaf4fb; display:flex; justify-content:center; padding:20px;
+  }
+  #app{width:100%; max-width:1000px; border-radius:10px; overflow:hidden; box-shadow:0 28px 80px rgba(0,0,0,.7); background:linear-gradient(180deg,#07121a,#041018)}
+  header{display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,.03)}
+  header h1{margin:0; font-size:20px}
+  header .meta{margin-left:auto; color:var(--muted); font-size:13px}
+  main{padding:18px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,.01), rgba(255,255,255,.02)); padding:18px; border-radius:8px}
+  .title{font-weight:700; font-size:20px; margin-bottom:6px}
+  .subtitle{color:var(--muted); margin-bottom:12px; font-size:13px}
+  #text{white-space:pre-wrap; min-height:420px; font-size:15px; line-height:1.85; margin-bottom:12px}
+  .witch{color:#bfe8ff}
+  .choiceList{display:flex; flex-direction:column; gap:10px; margin-top:8px}
+  .choice{background:var(--glass); padding:12px; border-radius:8px; cursor:pointer; transition:transform .12s, background .12s; box-shadow:0 10px 28px rgba(0,0,0,.45)}
+  .choice:hover{transform:translateY(-6px); background:rgba(255,255,255,.035)}
+  .choice:active{transform:scale(.98)}
+  .choice.rest{border-left: 3px solid var(--good)}
+  .choice.action{border-left: 3px solid var(--accent)}
+  .choice.danger{border-left: 3px solid var(--danger)}
+  .hud{display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap}
+  .stat{flex:1; background:rgba(255,255,255,.02); padding:8px; border-radius:6px; text-align:center; color:var(--muted)}
+  .stat.warning{background:rgba(255,107,107,0.1); color:var(--danger)}
+  .stat.critical{background:rgba(255,107,107,0.2); color:var(--danger); animation:pulse 2s infinite}
+  .small{font-size:13px;color:var(--muted)}
+  .overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,.85)); z-index:120}
+  .modal{background:linear-gradient(180deg,#071726,#031216); padding:18px; border-radius:10px; width:820px; max-width:96%}
+  .btn{background:var(--accent); color:#071018; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700; border:none}
+  .btn.secondary{background:transparent; border:1px solid rgba(255,255,255,.04); color:var(--muted)}
+  .danger{background:var(--danger)}
+  .log{max-height:160px; overflow:auto; margin-top:8px; padding:8px; background:rgba(255,255,255,.02); border-radius:6px; font-size:13px}
+  footer{padding:12px 18px; color:var(--muted); font-size:12px; display:flex; gap:10px; align-items:center}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%; margin-right:6px}
+  .dot.good{background:var(--good)} .dot.warn{background:var(--accent)} .dot.bad{background:var(--danger)}
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+  @media (max-width:1000px){ #text{min-height:300px} .modal{width:94%} }
+</style>
+</head>
+<body>
+<div id="app" role="application" aria-label="规则捉迷藏 完整版">
+  <header>
+    <h1>规则捉迷藏 — 完整副本</h1>
+    <div class="meta">忠实还原 · 线索推理触发规则 · 单文件</div>
+  </header>
+  <main>
+    <div class="card">
+      <div class="title" id="sceneTitle">加载中…</div>
+      <div class="subtitle" id="sceneSub"></div>
+      <div id="text" aria-live="polite"></div>
+      <div class="choiceList" id="choices"></div>
+      <div class="hud" style="margin-top:14px">
+        <div class="stat" id="statTiredWrap">疲惫：<strong id="statTired">0</strong></div>
+        <div class="stat" id="statColdWrap">寒冷：<strong id="statCold">0</strong></div>
+        <div class="stat" id="statHungryWrap">饥饿：<strong id="statHungry">0</strong></div>
+        <div class="stat">信任：<strong id="statTrust">50%</strong></div>
+      </div>
+      <div class="small" id="notice" style="margin-top:12px">状态：疲惫每15秒+1，寒冷50%概率+1，饥饿40%概率+1。任意值≥10时失败。</div>
+      <div class="log small" id="log" style="margin-top:12px">日志：游戏开始。</div>
+    </div>
+  </main>
+  <footer>
+    <div><span class="dot good"></span>已识别：<span id="discovered">无</span></div>
+    <div style="margin-left:auto"><button id="saveBtn" class="btn secondary">保存</button> <button id="loadBtn" class="btn secondary">读取</button></div>
+  </footer>
+</div>
+<script>
+/* ----------------------
+   全局状态与工具
+   ---------------------- */
+const gameState = {
+  scene:'prologue',
+  tired:0, cold:0, hungry:0, trust:50,
+  inventory:[],
+  clues:{ r1:0, r2:0, r3:0, r4:0, r5:0, r6:0 },
+  discovered:[],
+  ruleThreshold:{ r1:2, r2:2, r3:2, r4:2, r5:2, r6:3 },
+  active:{ r1:false, r2:false, r3:false, r4:false, r5:false, r6:false },
+  storyLog: [],
+  gameStartTime: Date.now(),
+  finalActive:false
+};
+
+let mainTimer = null;
+
+const el = id => document.getElementById(id);
+const textEl = el('text'), choicesEl = el('choices'), titleEl = el('sceneTitle'), subEl = el('sceneSub');
+const statTired = el('statTired'), statCold = el('statCold'), statHungry = el('statHungry'), statTrust = el('statTrust');
+const statTiredWrap = el('statTiredWrap'), statColdWrap = el('statColdWrap'), statHungryWrap = el('statHungryWrap');
+const discoveredEl = el('discovered'), logEl = el('log');
+
+function pushLog(line){
+  const t = new Date().toLocaleTimeString();
+  gameState.storyLog.push(`[${t}] ${line}`);
+  logEl.textContent = gameState.storyLog.slice(-20).join('\n');
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updateHUD(){
+  statTired.textContent = gameState.tired;
+  statCold.textContent = gameState.cold;
+  statHungry.textContent = gameState.hungry;
+  statTrust.textContent = `${gameState.trust}%`;
+  
+  statTiredWrap.className = 'stat' + (gameState.tired >= 8 ? ' critical' : gameState.tired >= 5 ? ' warning' : '');
+  statColdWrap.className = 'stat' + (gameState.cold >= 8 ? ' critical' : gameState.cold >= 5 ? ' warning' : '');
+  statHungryWrap.className = 'stat' + (gameState.hungry >= 8 ? ' critical' : gameState.hungry >= 5 ? ' warning' : '');
+  
+  discoveredEl.textContent = gameState.discovered.length ? gameState.discovered.map(n=>'规则'+n).join('，') : '无';
+}
+
+/* typing effect */
+let typing=false;
+function typeText(text, cb){
+  typing=true;
+  textEl.innerHTML='';
+  let i=0;
+  const speed=14;
+  const iv = setInterval(()=>{
+    textEl.innerHTML += text[i] || '';
+    i++;
+    if(i>=text.length){ clearInterval(iv); typing=false; if(cb) cb(); }
+  }, speed);
+}
+
+/* 状态增长定时器 */
+function startMainTimer(){
+  if(mainTimer) return;
+  pushLog('状态恶化开始：疲惫每15秒+1，寒冷50%概率+1，饥饿40%概率+1');
+  
+  mainTimer = setInterval(()=>{
+    gameState.tired += 1;
+    if(Math.random() < 0.5) gameState.cold += 1;
+    if(Math.random() < 0.4) gameState.hungry += 1;
+    updateHUD();
+    
+    if(gameState.tired >= 10) return gameOver('疲惫值达到10，你体力不支倒下了。');
+    if(gameState.cold >= 10) return gameOver('寒冷值达到10，你被冻僵了。');
+    if(gameState.hungry >= 10) return gameOver('饥饿值达到10，你因饥饿而虚脱。');
+  }, 15000);
+}
+
+function stopMainTimer(){
+  if(mainTimer){ clearInterval(mainTimer); mainTimer=null; }
+}
+
+/* 规则触发 */
+function addClue(key, n=1){
+  gameState.clues[key] = (gameState.clues[key] || 0) + n;
+  pushLog(`获得线索 ${key}（当前 ${gameState.clues[key]}）`);
+  updateHUD();
+}
+
+function tryDiscover(n){
+  if(gameState.discovered.includes(n)) return false;
+  const k = 'r'+n;
+  if(gameState.clues[k] >= gameState.ruleThreshold[k]){
+    gameState.discovered.push(n);
+    gameState.active[k] = true;
+    pushLog(`你断定并唤醒了 规则${n}`);
+    updateHUD();
+    applyRuleEffect(n);
+    return true;
+  } else {
+    gameState.hungry += 1;
+    gameState.trust = Math.max(0, gameState.trust - 5);
+    pushLog(`错误断定：证据不足，体力/信任受损`);
+    updateHUD();
+    return false;
+  }
+}
+
+/* 规则效果 */
+function applyRuleEffect(n){
+  if(n===1){
+    pushLog('规则一已激活：睡觉不能睡太久，否则现实会杀掉你。');
+    pushLog('提示：疲惫值增长速度保持不变（每15秒+1）。');
+  }
+  if(n===2){ pushLog('规则二已激活：遇到长有犬牙的人类，立刻包裹自己。'); }
+  if(n===3){ pushLog('规则三已激活：寒霜蔓延时，真挚的笑容能够融化它。'); }
+  if(n===4){ pushLog('规则四已激活：不能告知其他人自己的真实想法。'); }
+  if(n===5){ pushLog('规则五已激活：不能发出不和谐的声音。'); }
+  if(n===6){
+    gameState.finalActive = true;
+    pushLog('规则六已唤醒：最终阶段开始。');
+  }
+}
+
+/* 状态管理行动 */
+function tryRest(){
+  if(gameState.tired <= 1){ pushLog('你并不感到疲惫'); return false; }
+  gameState.tired = Math.max(0, gameState.tired - 3);
+  gameState.trust = Math.max(0, gameState.trust - 2);
+  pushLog('你休息了一会，疲惫感减轻');
+  updateHUD(); return true;
+}
+
+function tryWarmUp(){
+  if(gameState.cold <= 1){ pushLog('你并不感到寒冷'); return false; }
+  if(gameState.active.r3){
+    gameState.cold = Math.max(0, gameState.cold - 4);
+    pushLog('你露出真挚的笑容，温暖驱散了寒意');
+  } else {
+    gameState.cold = Math.max(0, gameState.cold - 2);
+    pushLog('你试图取暖，寒意稍减');
+  }
+  updateHUD(); return true;
+}
+
+function tryEat(){
+  if(gameState.hungry <= 1){ pushLog('你并不感到饥饿'); return false; }
+  if(gameState.active.r6 && Math.random() < 0.25){
+    gameOver('你在进食时被规则六察觉，死亡。');
+    return false;
+  }
+  gameState.hungry = Math.max(0, gameState.hungry - 3);
+  gameState.trust = Math.max(0, gameState.trust - 1);
+  pushLog('你小心地进食，饥饿感减轻');
+  updateHUD(); return true;
+}
+
+/* game over */
+function gameOver(reason){
+  stopMainTimer();
+  pushLog('游戏结束：' + reason);
+  const ov = document.createElement('div'); ov.className='overlay';
+  ov.innerHTML = `<div class="modal"><div style="font-weight:700">游戏结束</div><div style="margin-top:12px">${reason}</div><div style="margin-top:12px; text-align:right"><button id="restart" class="btn">重新开始</button></div></div>`;
+  document.body.appendChild(ov);
+  document.getElementById('restart').addEventListener('click', ()=> location.reload());
+}
+
+/* 工具函数 */
+function makeChoice(text, next, opts={}){ 
+  return { text, next, action: opts.action || null, className: opts.className || '' }; 
+}
+
+function makeRestChoice(text, action){
+  return makeChoice(text, null, { action, className: 'rest' });
+}
+
+function makeActionChoice(text, next, action){
+  return makeChoice(text, next, { action, className: 'action' });
+}
+
+function renderOptions(options){
+  choicesEl.innerHTML='';
+  options.forEach(opt=>{
+    const div=document.createElement('div');
+    div.className='choice '+(opt.className||'');
+    div.textContent=opt.text;
+    div.onclick=()=>{ 
+      if(opt.action && typeof opt.action === 'function') {
+        opt.action(); 
+      }
+      if(opt.next) {
+        go(opt.next);
+      }
+    };
+    choicesEl.appendChild(div);
+  });
+}
+
+/* ---------- 完整场景系统 ---------- */
+const scenes = {};
+
+/* 序章 */
+scenes.prologue = function(){
+  titleEl.textContent = '序章 · 降临';
+  subEl.textContent = '城市 · 副本开始';
+  const text = `规则已经沉睡，快去找到它们。
+
+它们或是物品，或是生物。
+
+上一个规则会提供下一个规则的提示。
+
+不同身份牌的玩家会收到不同信息。
+
+你的规则一提示是：
+
+【客中自有未招魂，剪纸空教夜祭门。】
+
+规则苏醒后开始生效。
+
+小心睡眠浅的规则。
+
+我是超能力者顾涛，这是我的第四个副本【规则捉迷藏】。负债累累的我必须在这个副本得到较高评分，才能还清这笔债务。而这次捉迷藏的范围，是整个现代化都市。场景大小不亚于一个地级市。
+
+其中藏匿的规则数量是未知数。更恐怖的是，它们会悄无声息的生效。玩家死都不知道自己触犯了什么规则。
+
+我看向身边的女人，她脸上有一道长长的刀疤，破坏了她看起来姣好的面容。
+
+她瞧着我，"你要知道这个游戏多的是畜生。"`;
+
+  typeText(text, ()=>{
+    startMainTimer();
+    renderOptions([
+      makeChoice('询问黑女巫的线索', 'witchClue'),
+      makeRestChoice('先休息调整状态', ()=> { tryRest(); go('prologue'); })
+    ]);
+  });
+};
+
+scenes.witchClue = function(){
+  titleEl.textContent = '黑女巫的提示';
+  subEl.textContent = '交换信息';
+  const text = `我歉意的说："抱歉，我无意打探你的往事。"
+
+这个游戏的每一个玩家都挣扎在生死线上，每个人的经历都可以讲上三天三夜。充斥着背叛、不信任、痛苦以及绝望。而且游戏是强制征收、随机匹配。想找一个值得信赖的长期队友是不可能的事。
+
+这个代号为【黑女巫】的玩家，是我找到的临时队友。
+
+我告知她，"我得到的提示是一句诗：客中自有未招魂，剪纸空教夜祭门。"
+
+她说："我看到的是一个画面，是一扇老旧的木窗。"
+
+我看着她，"城市里的木窗户应该不多，窗户里有没有其他东西？"
+
+她答道："依稀可见一张上下铺的铁架子床。"
+
+我点点头，"看来我们需要找一下出租的老旧小区。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('前往房屋中介询问', 'agency'),
+      makeChoice('直接搜索三里度老区', 'sanlidu'),
+      makeRestChoice('商议时稍作休息', ()=> { tryRest(); tryWarmUp(); go('witchClue'); })
+    ]);
+  });
+};
+
+scenes.agency = function(){
+  titleEl.textContent = '房屋中介';
+  subEl.textContent = '获取具体地址信息';
+  const text = `来到房屋中介，销售人员迎上来，"两位，请问是买房、卖房还是租房？"
+
+我问道："租房，有没有什么地方适合工人住？价钱要低，装修、家电无所谓。租期大概半年。"
+
+这样可以把范围缩到我想要的地方。
+
+销售人员露出为难之色，"这附近套二的最低月租都要一百奖励点，不太符合您的要求。您可以往三里度、顺子岸去问问。"
+
+我记下地址，对她说了声谢谢。一奖励点等于一克黄金。在副本里几乎是通用货币。一百奖励点确实比较昂贵。
+
+问了一下交通路线。两个地方相隔很远。一个往南几乎要出城了，一个在西北方向靠内侧。
+
+黑女巫说道："分头去找吧，我们时间不多。"`;
+
+  typeText(text, ()=> {
+    addClue('r1', 1);
+    renderOptions([
+      makeChoice('同意分头，我去三里度', 'sanlidu'),
+      makeChoice('坚持一起行动，都去三里度', 'sanliduTogether'),
+      makeChoice('提议一起去顺子岸', 'shunzian'),
+      makeRestChoice('在中介稍作休息', ()=> { tryRest(); go('agency'); })
+    ]);
+  });
+};
+
+scenes.sanlidu = function(){
+  titleEl.textContent = '三里度老区';
+  subEl.textContent = '寻找目标建筑';
+  const text = `十分钟后，我确定了这一想法。要找到合适的配对不是件容易的事，我思考着和黑女巫的会面。细细想来，就像是她在前面等我一样。
+
+代号的形成绝非空穴来风，难道她有占卜的能力？我记得刚才是让她先选的地方。三里度？
+
+黑女巫来到小区内。一只乌鸦飞入左眼眶变回眼珠。不会有错，这就是提示中看到的地方。她拿起传呼铃，要不要摇响呢？从某种意义来说，那人已经失去了利用价值...
+
+看到我时，黑女巫显得很惊讶，"你来的很快嘛。"
+
+我冲她笑笑，她摇铃的那刻，代表着我们的队友关系得以存续。
+
+"我打车来的。"
+
+她没有深究，而是指指不远处的三层楼房，"就在里面。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('询问她是否看到规则', 'checkRule'),
+      makeChoice('直接进入楼内', 'enterBuilding'),
+      makeRestChoice('进楼前调整状态', ()=> { tryRest(); tryWarmUp(); go('checkRule'); })
+    ]);
+  });
+};
+
+scenes.sanliduTogether = function(){
+  titleEl.textContent = '三里度老区';
+  subEl.textContent = '同行探索';
+  const text = `你们一起来到三里度。黑女巫指着一栋三层楼房说："就是那里。"
+
+你能感受到这个地方有些异样，空气中弥漫着陈旧和死亡的气息。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('询问她的观察结果', 'checkRule'),
+      makeChoice('直接进入楼内', 'enterBuilding')
+    ]);
+  });
+};
+
+scenes.shunzian = function(){
+  titleEl.textContent = '顺子岸';
+  subEl.textContent = '错误的方向';
+  const text = `你们来到顺子岸，但这里的建筑都比较新，很少有老旧的木窗。搜索了一会儿，黑女巫摇摇头：
+
+"这里不对，我看到的画面不是这样的。我们应该去三里度。"
+
+时间被浪费了，你们的状态也在恶化。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    gameState.trust = Math.max(0, gameState.trust - 3);
+    updateHUD();
+    renderOptions([
+      makeChoice('立即赶往三里度', 'sanlidu'),
+      makeRestChoice('先恢复再出发', ()=> { tryRest(); go('sanlidu'); })
+    ]);
+  });
+};
+
+scenes.checkRule = function(){
+  titleEl.textContent = '初步调查';
+  subEl.textContent = '楼道中的威胁';
+  const text = `我问："你看到规则了？"
+
+黑女巫摇摇头，"没找到。"
+
+我正准备进，她拦住我说："楼道里有其它东西。"
+
+我眯眼看了看，是人？但耳畔传来的声音分明告诉我，那是野兽一样的生物。
+
+我说："规则没有苏醒之前，我觉得不会有危险。"
+
+游戏十分擅长故布疑阵，如果我们因为游戏怪物而踯躅不前，等待我们的必将是死局。
+
+"我不介意走在前面。"
+
+这是我的诚意，代表我愿意建立一段牢靠的合作关系。
+
+她有些诧异，但还是点点头，"那我们就试一试。"`;
+
+  typeText(text, ()=> {
+    gameState.trust += 2;
+    updateHUD();
+    renderOptions([
+      makeChoice('勇敢地走在前面进入楼道', 'enterBuilding'),
+      makeChoice('谨慎地一起进入', 'cautiousEntry'),
+      makeRestChoice('做好准备再进入', ()=> { tryRest(); go('enterBuilding'); })
+    ]);
+  });
+};
+
+scenes.enterBuilding = function(){
+  titleEl.textContent = '楼道遭遇';
+  subEl.textContent = '犬牙怪的威胁';
+  const text = `走近老楼，外墙被岁月打湿，褪下一层又一层的墙皮。
+
+那带有警告的声音如同不牢绳的疯狗，攻击性尤为明显。近了，越发的近了。
+
+四肢着地的人形怪物好似要弹出来一般，每一个见到的人都不会怀疑它的下一步举动——它绝对要攻击人。
+
+就如同高高仰起、嘶嘶咕信的毒蛇。肢体语言带来的冲击力映入脑海。大脑在告诉我，快离开这个怪物！它一定会咬死你！
+
+我强压住后退的冲动，艰难的向前走了一步。
+
+"它没有攻击我。"我不知道是在对谁说，暗示着自己继续往前。
+
+糅合了人的肢体、犬的牙，头发像狮子般散乱蓬松的肌肉怪物嘴角一直抽动着。
+
+我来到了它小堵的楼道，几乎与它面对面。它的呼吸溅射到我的脸庞。它眯眼间攀上墙壁，看我两眼，飞速消失。
+
+黑女巫走上前，"你的胆子真大。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('继续上楼寻找目标房间', 'thirdFloor'),
+      makeChoice('分析犬牙怪的行为模式', 'analyzeBeast'),
+      makeRestChoice('在楼道稍作休息', ()=> { tryRest(); go('thirdFloor'); })
+    ]);
+  });
+};
+
+scenes.cautiousEntry = function(){
+  titleEl.textContent = '谨慎进入';
+  subEl.textContent = '花瓶袭击';
+  const text = `你们小心翼翼地进入楼道。忽然间黑女巫推你左移了两步，一个花瓶砸的稀碎。
+
+我抬眼望去，犬牙怪在四楼隐没了身形。
+
+黑女巫说："看来你猜对了一半。"
+
+它确实不能直接攻击，但能借助物品。
+
+"谢谢。"我对她说。
+
+"小事。我们去上面吧，规则一就在第三层。"她丝毫不在意，当先走去。`;
+
+  typeText(text, ()=> {
+    gameState.trust += 3;
+    updateHUD();
+    renderOptions([
+      makeChoice('跟随她上到三楼', 'thirdFloor'),
+      makeChoice('先观察犬牙怪的行为', 'analyzeBeast')
+    ]);
+  });
+};
+
+scenes.analyzeBeast = function(){
+  titleEl.textContent = '行为分析';
+  subEl.textContent = '理解威胁机制';
+  const text = `你仔细观察犬牙怪的行为。它出现的时机太巧妙了。你们刚刚得到提示，它就抵达了门外，甚至刻意弄出一点声响。生怕你们不知道它在。
+
+同时还愿意陪你演一出调虎离山计。为了驱赶你们，它可谓是费尽心机。
+
+然而你没有忘记它一开始冲你砸下的花瓶。这便是提示！
+
+细节藏在提示中。你们一旦进入趋利避害的惯性思维，就会迅速离开，向着野外、花园这种地方走。这样做，就踏入了游戏的陷阱。最后走向死路。
+
+黑女巫此刻也回过味来，"看来我运气不错，有一位智者当队友。"`;
+
+  typeText(text, ()=> {
+    addClue('r2', 1);
+    gameState.trust += 2;
+    updateHUD();
+    renderOptions([
+      makeChoice('现在上到四楼调查', 'fourthFloor'),
+      makeChoice('先去三楼寻找规则一', 'thirdFloor')
+    ]);
+  });
+};
+
+scenes.thirdFloor = function(){
+  titleEl.textContent = '三楼·目标房间';
+  subEl.textContent = '铁架子床的秘密';
+  const text = `来到第三层，她说："就是左边这家。"
+
+我试着推了推，门关着。刚准备敲门，她说道："里面没人。"
+
+我问："我们要怎么进去？找个撬锁的？"
+
+这附近可没有藏钥匙的地方。
+
+她看着我，"为什么不试试从右边进呢？"
+
+在把右边主人家轻轻打晕后，你们来到了阳台位置。
+
+我首先看了看，没看到那只犬牙怪。"要从这里过去，还是有风险。"
+
+两个阳台的间隔不远，若是平地可以全力一跃。在栏杆上跳过去有跌落的可能。
+
+"其实可以找人问一问隔壁租不租，就说要看房......"未等我说完，黑女巫就爬到栏杆上跃过去。
+
+她平静的看着我，"我来给你开门。"
+
+真是不能小看任何一个老玩家。
+
+进到屋内，这里摆放着一张铁架子床。但除了上面的木板子，已经什么都不剩。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('仔细搜索房间', 'searchRoom'),
+      makeChoice('检查床铺本身', 'checkBed'),
+      makeChoice('询问黑女巫的想法', 'askWitch')
+    ]);
+  });
+};
+
+scenes.searchRoom = function(){
+  titleEl.textContent = '房间搜索';
+  subEl.textContent = '寻找线索';
+  const text = `翻来找去，完全没见到规则的影子。
+
+【客中自有未招魂，剪纸空教夜祭门。】
+
+前半句提示了位置，你一直以为剪纸是对形态的提示。总不能是门吧？你拍了拍屋内屋外的两扇门。
+
+黑女巫走过来，"我们是不是要做招魂的仪式？"
+
+你冥思苦想，【夜祭门】，是不是时间不对？但副本的节奏不太可能让你们拖延到晚上。
+
+如果要搞祭祀，这里又没有祭祀的物品。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('检查床铺，也许床就是"门"', 'checkBed'),
+      makeChoice('等到夜晚再进行仪式', 'waitNight'),
+      makeChoice('寻找剪纸相关物品', 'findPaper')
+    ]);
+  });
+};
+
+scenes.checkBed = function(){
+  titleEl.textContent = '床铺检查';
+  subEl.textContent = '梦境之门';
+  const text = `你盯着架子床，"你说这两块床板像不像门？"
+
+她伸手敲了敲，"完全没反应。"
+
+你说道："门是什么？是连通两个空间的出入口。床是什么？是连通梦与现实的出入口。"
+
+"两张床，正好是AB两个身份。"
+
+"夜祭门，是不是让我们到梦里去找呢？"
+
+她看着你，"意想不到的猜测，可以试一试。"
+
+关上门，躺在床上，闭上眼。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('进入梦境', 'dreamSequence'),
+      makeRestChoice('先休息调整状态再入梦', ()=> { tryRest(); go('dreamSequence'); }),
+      makeChoice('让黑女巫先尝试', 'witchDream')
+    ]);
+  });
+};
+
+scenes.askWitch = function(){
+  titleEl.textContent = '询问队友';
+  subEl.textContent = '集思广益';
+  const text = `你询问黑女巫的想法。她沉思了一会儿：
+
+"提示说的是'剪纸空教夜祭门'，也许我们需要在夜晚进行某种仪式。或者这里的'门'不是指真正的门，而是其他的通道。"
+
+她看向床铺："床也是一种门，连接梦境与现实的门。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('尝试在床上入梦', 'checkBed'),
+      makeChoice('继续搜索房间其他地方', 'searchRoom'),
+      makeChoice('等待夜晚降临', 'waitNight')
+    ]);
+  });
+};
+
+scenes.waitNight = function(){
+  titleEl.textContent = '等待夜晚';
+  subEl.textContent = '时间的消耗';
+  const text = `你们决定等到夜晚。但这意味着要在这里消耗很长时间，而你们的状态值在持续恶化。
+
+几个小时过去了...`;
+
+  typeText(text, ()=> {
+    gameState.tired += 2;
+    gameState.cold += 2;
+    gameState.hungry += 2;
+    updateHUD();
+    
+    if(gameState.tired >= 10 || gameState.cold >= 10 || gameState.hungry >= 10) {
+      gameOver('在等待过程中，你的状态恶化到了极限。');
+      return;
+    }
+    
+    renderOptions([
+      makeChoice('现在是夜晚，开始仪式', 'dreamSequence'),
+      makeChoice('状态太差，必须先恢复', 'emergencyRest')
+    ]);
+  });
+};
+
+scenes.emergencyRest = function(){
+  titleEl.textContent = '紧急恢复';
+  subEl.textContent = '状态调整';
+  const text = `你的状态已经很糟糕了，必须进行一些恢复措施。`;
+  typeText(text, ()=> {
+    renderOptions([
+      makeRestChoice('尽力休息', ()=> { tryRest(); go('dreamSequence'); }),
+      makeRestChoice('想办法取暖', ()=> { tryWarmUp(); go('dreamSequence'); }),
+      makeRestChoice('找些食物', ()=> { tryEat(); go('dreamSequence'); })
+    ]);
+  });
+};
+
+scenes.findPaper = function(){
+  titleEl.textContent = '寻找剪纸';
+  subEl.textContent = '物证搜寻';
+  const text = `你仔细搜寻房间，在床下的一个角落发现了一个旧信封。信封里夹着一张红色的剪纸，剪纸图案是一条小狗。
+
+信里只有一句话，"狗下崽了，长这样。"
+
+字歪七扭八，写字的人很不熟练。`;
+
+  typeText(text, ()=> {
+    addClue('r1', 1);
+    renderOptions([
+      makeChoice('检查剪纸的细节', 'paperDetails'),
+      makeChoice('这就是线索，尝试入梦', 'dreamSequence')
+    ]);
+  });
+};
+
+scenes.paperDetails = function(){
+  titleEl.textContent = '剪纸细节';
+  subEl.textContent = '深入观察';
+  const text = `仔细观察剪纸，你发现这是一个思念家中小狗的打工者留下的记忆。剪纸虽然粗糙，但充满了对家乡的思念。
+
+（为啥不打电话？）
+（写信才留的久吧）
+
+这些想法在你脑中闪过。`;
+
+  typeText(text, ()=> {
+    addClue('r1', 1);
+    renderOptions([
+      makeChoice('带着这些理解进入梦境', 'dreamSequence')
+    ]);
+  });
+};
+
+scenes.witchDream = function(){
+  titleEl.textContent = '黑女巫入梦';
+  subEl.textContent = '队友的尝试';
+  const text = `黑女巫躺下尝试入梦。过了一会儿，她开始剧烈咳嗽，咳出了血。
+
+"快找规则一，我感觉我要死了。"她虚弱地说。
+
+原来她不是装的！这下真得抓紧了。
+
+正在翻箱倒柜中，电话宾宾当当响起来，像是《鬼来电》般恐怖。先是一个电话，然后是两个电话，如同催命一般。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('接起电话', 'answerPhone'),
+      makeChoice('继续搜寻，不理电话', 'ignorePhone'),
+      makeChoice('叫醒黑女巫', 'wakeWitch')
+    ]);
+  });
+};
+
+scenes.dreamSequence = function(){
+  titleEl.textContent = '梦境·真相揭示';
+  subEl.textContent = '规则一的觉醒';
+  const text = `"喂！还睡？！起来上工了。"
+
+你起床，看着屋内的一群陌生人。几人看向你下铺——黑女巫。
+
+"老李，你是不是身体不好啊。别拖着，尘肺病该治还得治。"
+
+"人老李把钱都寄回家了，他儿子要凑彩礼诶。"
+
+门口拿黄帽子的人说："走啦，晚了要罚钱。"
+
+这时黑女巫扮演的老李猛咳了几声。
+
+你对他们说："你们先走吧，我看着老李。"
+
+他们几人说道："行，我们给班头说一声，等老李好点了你们也赶点儿来。"
+
+等他们走后，黑女巫又咳了好几下，她虚弱的说："快找规则一，我感觉我要死了。"
+
+原来她不是装的！这下真得抓紧了。
+
+正在翻箱倒柜中，电话宾宾当当响起来，像是《鬼来电》般恐怖。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('接起电话', 'answerPhone'),
+      makeChoice('继续搜寻房间', 'searchInDream'),
+      makeChoice('查看黑女巫的状况', 'checkWitchInDream')
+    ]);
+  });
+};
+
+scenes.answerPhone = function(){
+  titleEl.textContent = '接听电话';
+  subEl.textContent = '催命之声';
+  const text = `先是一个电话，然后是两个电话，如同催命一般。你接起。
+
+"你们还想不想赚钱了！不想干就趁早滚！"
+
+这个时候黑女巫咳出了血。
+
+你想这就是两张床的原因，因为其中一个人必须扮演老李的角色。
+
+找来找去，终于在一个本子里找到一封信。
+
+信里夹着红色的剪纸，剪纸图案是一条小狗。
+
+信里只有一句话，"狗下崽了，长这样。"
+
+字歪七扭八，写字的人很不熟练。
+
+（为啥不打电话？）
+
+（写信才留的久吧）
+
+伴随着闪烁的画面破碎。
+
+小狗剪纸对你们说：【规则一：睡觉不能睡太久，否则现实会杀掉你。】
+
+与此同时它公布规则二的提示：【它畏惧面对生活，而把自己结成茧，挂在蛾蝶会飞去的地方。】`;
+
+  typeText(text, ()=> {
+    addClue('r1', 2);
+    addClue('r2', 1);
+    renderOptions([
+      makeActionChoice('立即断定并唤醒规则一', null, ()=> {
+        const ok = tryDiscover(1);
+        if(ok) go('rule1Success'); else go('rule1Fail');
+      }),
+      makeChoice('从梦中醒来，收集更多证据', 'wakeUp'),
+      makeChoice('询问规则二的线索含义', 'askRule2Hint')
+    ]);
+  });
+};
+
+scenes.searchInDream = function(){
+  titleEl.textContent = '梦中搜寻';
+  subEl.textContent = '寻找关键证据';
+  const text = `你在梦境的房间中搜寻，发现了一些工人的个人物品：一张家庭照片、几封家书、还有一个装着剪纸的信封。
+
+从这些物品中，你能感受到一个远离家乡、思念亲人的工人的生活轨迹。`;
+
+  typeText(text, ()=> {
+    addClue('r1', 1);
+    renderOptions([
+      makeChoice('仔细阅读家书', 'readLetters'),
+      makeChoice('检查剪纸', 'findPaper'),
+      makeChoice('关注电话声', 'answerPhone')
+    ]);
+  });
+};
+
+scenes.checkWitchInDream = function(){
+  titleEl.textContent = '检查队友';
+  subEl.textContent = '梦中的角色';
+  const text = `黑女巫在梦中扮演的老李状况越来越糟，不断咳血。这让你意识到梦境的危险性 - 如果在梦中"死去"，可能现实中也会有危险。
+
+你必须快速找到规则一的线索。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('加速搜寻，接听电话', 'answerPhone'),
+      makeChoice('尝试唤醒她', 'wakeWitchInDream'),
+      makeChoice('继续搜索关键物品', 'searchInDream')
+    ]);
+  });
+};
+
+scenes.wakeWitchInDream = function(){
+  titleEl.textContent = '唤醒队友';
+  subEl.textContent = '梦境中的救助';
+  const text = `你试图唤醒黑女巫，但在梦境中这很困难。她的咳嗽声越来越重，状况危急。
+
+这时电话响得更急促了。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('必须接电话寻求线索', 'answerPhone'),
+      makeChoice('强行带她离开梦境', 'forcedWakeUp')
+    ]);
+  });
+};
+
+scenes.forcedWakeUp = function(){
+  titleEl.textContent = '强制醒来';
+  subEl.textContent = '不完整的收获';
+  const text = `你强行带着黑女巫从梦境中醒来。她的状况稍有好转，但你们错过了一些重要线索。
+
+"我们必须再试一次，但这次要更小心。"她说。`;
+
+  typeText(text, ()=> {
+    gameState.trust += 2;
+    updateHUD();
+    renderOptions([
+      makeChoice('重新进入梦境', 'dreamSequence'),
+      makeChoice('先恢复状态再尝试', 'restBeforeDream'),
+      makeChoice('寻找其他方式获得线索', 'alternativeSearch')
+    ]);
+  });
+};
+
+scenes.readLetters = function(){
+  titleEl.textContent = '家书内容';
+  subEl.textContent = '工人的心声';
+  const text = `家书中写着对家人的思念，对工作的疲惫，还有对未来的不确定。最后一封信特别提到了一只小狗：
+
+"家里的小狗生了崽，我用红纸剪了个狗的样子寄回去，希望能带去我的祝福..."
+
+这解释了剪纸的来源。`;
+
+  typeText(text, ()=> {
+    addClue('r1', 1);
+    renderOptions([
+      makeChoice('这足够了，接听电话获得最终线索', 'answerPhone'),
+      makeChoice('继续搜寻更多证据', 'searchInDream')
+    ]);
+  });
+};
+
+scenes.ignorePhone = function(){
+  titleEl.textContent = '忽略电话';
+  subEl.textContent = '错失机会';
+  const text = `你选择忽略电话，继续搜寻。但黑女巫的状况越来越差，而你没有找到决定性的线索。
+
+梦境开始崩塌，你们被迫醒来，但收获有限。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    gameState.trust = Math.max(0, gameState.trust - 3);
+    updateHUD();
+    renderOptions([
+      makeChoice('重新尝试入梦', 'dreamSequence'),
+      makeChoice('寻找其他线索来源', 'alternativeSearch')
+    ]);
+  });
+};
+
+scenes.alternativeSearch = function(){
+  titleEl.textContent = '其他途径';
+  subEl.textContent = '继续调查';
+  const text = `你们决定通过其他方式寻找线索。也许可以询问邻居，或者调查这栋楼的其他房间。`;
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('询问邻居', 'askNeighbors'),
+      makeChoice('调查四楼', 'fourthFloor'),
+      makeChoice('重新分析现有线索', 'analyzeClues')
+    ]);
+  });
+};
+
+scenes.askNeighbors = function(){
+  titleEl.textContent = '询问邻居';
+  subEl.textContent = '收集证言';
+  const text = `你们敲响了邻居的门。一个中年妇女开门，警惕地看着你们。
+
+"我们想了解一下之前住在隔壁的人..."
+
+"哦，老李啊。可怜的人，工作太辛苦了，最后就那样死在了房间里。夜里经常听到他咳嗽，还有电话响。"
+
+她的话证实了你们在梦中看到的一切。`;
+
+  typeText(text, ()=> {
+    addClue('r1', 1);
+    renderOptions([
+      makeChoice('询问更多细节', 'moreDetails'),
+      makeChoice('现在线索足够，尝试唤醒规则一', null, { action: ()=> {
+        const ok = tryDiscover(1);
+        if(ok) go('rule1Success'); else go('rule1Fail');
+      }})
+    ]);
+  });
+};
+
+scenes.moreDetails = function(){
+  titleEl.textContent = '更多细节';
+  subEl.textContent = '邻居的回忆';
+  const text = `"老李很想家，经常说起他的小狗。还给我看过一张红色的剪纸，说是他自己剪的。"
+
+"那天夜里，电话一直响，但没人接。第二天我们发现他已经..."
+
+邻居叹了口气，"这些打工的人真不容易。"`;
+
+  typeText(text, ()=> {
+    addClue('r1', 2);
+    renderOptions([
+      makeActionChoice('证据充足，唤醒规则一', null, ()=> {
+        const ok = tryDiscover(1);
+        if(ok) go('rule1Success'); else go('rule1Fail');
+      })
+    ]);
+  });
+};
+
+scenes.analyzeClues = function(){
+  titleEl.textContent = '线索分析';
+  subEl.textContent = '整理证据';
+  const text = `你和黑女巫整理目前的线索：
+
+1. 提示：客中自有未招魂，剪纸空教夜祭门
+2. 老李的故事：打工者思乡而死
+3. 剪纸：红色小狗，寄托思念
+4. 电话：催促上工的声音
+5. 床铺：连接梦境与现实的门
+
+这些线索都指向睡眠与死亡的关联。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeActionChoice('线索足够，断定规则一', null, ()=> {
+        const ok = tryDiscover(1);
+        if(ok) go('rule1Success'); else go('rule1Fail');
+      }),
+      makeChoice('还需要更多证据', 'searchRoom')
+    ]);
+  });
+};
+
+scenes.askRule2Hint = function(){
+  titleEl.textContent = '规则二线索';
+  subEl.textContent = '分析新提示';
+  const text = `黑女巫思考着规则二的提示："它畏惧面对生活，而把自己结成茧，挂在蛾蝶会飞去的地方。"
+
+"蛾蝶会飞去的地方...会是哪里？花园？灯光附近？"
+
+你们需要分析这个提示的含义。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('先唤醒规则一再考虑', null, { action: ()=> {
+        const ok = tryDiscover(1);
+        if(ok) go('rule1Success'); else go('rule1Fail');
+      }}),
+      makeChoice('立即去寻找规则二', 'searchRule2'),
+      makeChoice('从梦境中醒来再讨论', 'wakeUp')
+    ]);
+  });
+};
+
+scenes.wakeUp = function(){
+  titleEl.textContent = '从梦中醒来';
+  subEl.textContent = '回到现实';
+  const text = `你们从梦境中醒来，回到了三楼的房间。刚才的经历历历在目，线索也很清晰了。
+
+黑女巫看着你："我们获得了重要信息。现在应该行动了。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeActionChoice('断定并唤醒规则一', null, ()=> {
+        const ok = tryDiscover(1);
+        if(ok) go('rule1Success'); else go('rule1Fail');
+      }),
+      makeChoice('先去寻找规则二的线索', 'searchRule2'),
+      makeRestChoice('先恢复状态', ()=> { tryRest(); go('wakeUp'); })
+    ]);
+  });
+};
+
+scenes.restBeforeDream = function(){
+  titleEl.textContent = '梦前休息';
+  subEl.textContent = '状态调整';
+  const text = `你们决定先恢复一下状态再重新尝试。在这个危险的世界里，保持良好状态很重要。`;
+  typeText(text, ()=> {
+    renderOptions([
+      makeRestChoice('休息恢复疲惫', ()=> { tryRest(); go('dreamSequence'); }),
+      makeRestChoice('取暖驱寒', ()=> { tryWarmUp(); go('dreamSequence'); }),
+      makeRestChoice('进食补充', ()=> { tryEat(); go('dreamSequence'); })
+    ]);
+  });
+};
+
+scenes.rule1Success = function(){
+  titleEl.textContent = '规则一 已唤醒';
+  subEl.textContent = '第一个规则的觉醒';
+  const text = `规则一已被确认并生效：
+
+【规则一：睡觉不能睡太久，否则现实会杀掉你。】
+
+黑女巫看着你，语气变得更沉重：
+"以后睡觉要极为小心。不过这个规则已经激活，它不会改变你疲惫值的增长速度，那还是每15秒+1。"
+
+现在你们有了规则二的提示：它畏惧面对生活，而把自己结成茧，挂在蛾蝶会飞去的地方。
+
+你们需要寻找规则二的位置。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('前往四楼寻找规则二', 'fourthFloor'),
+      makeChoice('分析规则二的提示', 'analyzeRule2'),
+      makeChoice('先在街上休整', 'streetRest'),
+      makeRestChoice('在这里稍作休息', ()=> { tryRest(); go('rule1Success'); })
+    ]);
+  });
+};
+
+scenes.rule1Fail = function(){
+  titleEl.textContent = '断定失败';
+  subEl.textContent = '证据不足';
+  const text = `你的断定失败了。证据还不够充分，黑女巫摇摇头：
+
+"我们需要更多的证据才能确认规则一。"
+
+你感到挫败，体力也有所消耗。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('重新搜集证据', 'searchRoom'),
+      makeChoice('再次进入梦境', 'dreamSequence'),
+      makeChoice('寻求其他线索来源', 'alternativeSearch')
+    ]);
+  });
+};
+
+scenes.analyzeRule2 = function(){
+  titleEl.textContent = '分析规则二';
+  subEl.textContent = '蛾蝶与茧';
+  const text = `你们仔细分析规则二的提示：
+
+"它畏惧面对生活，而把自己结成茧，挂在蛾蝶会飞去的地方。"
+
+黑女巫说："蛾蝶有趋光性，会被灯光吸引。所以蛾蝶会飞去的地方，很可能是有灯光的地方。"
+
+"结成茧...是不是指的是手机？现代人经常把自己封闭在手机的世界里。"
+
+这个分析很有道理。`;
+
+  typeText(text, ()=> {
+    addClue('r2', 1);
+    renderOptions([
+      makeChoice('去四楼寻找灯光附近的手机', 'fourthFloor'),
+      makeChoice('在这栋楼里寻找其他灯光', 'searchLights')
+    ]);
+  });
+};
+
+scenes.searchLights = function(){
+  titleEl.textContent = '寻找灯光';
+  subEl.textContent = '楼内搜索';
+  const text = `你们在楼内搜索各种灯光。楼梯间的灯、房间里的灯、甚至手电筒的光。
+
+在四楼的一个房间里，你们发现天花板的灯泡有些异常...`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('仔细检查那个灯泡', 'checkLightBulb'),
+      makeChoice('继续搜索其他地方', 'fourthFloor')
+    ]);
+  });
+};
+
+scenes.checkLightBulb = function(){
+  titleEl.textContent = '异常灯泡';
+  subEl.textContent = '发现手机';
+  const text = `你找了张椅子垫在脚下，伸手去摘，"所以，规则二会误认为蛾蝶喜欢飞向灯泡。"
+
+但这和结成茧有什么关系？
+
+你摘下灯泡，发现灯泡中缠着一个手机。
+
+这就是黑女巫看到一片黑的原因。因为这样的灯泡不可能点亮。
+
+（这样，蛾蝶就会绕着我飞吧。）
+
+（关机后没有消息真好。）
+
+（可为什么花儿都凋谢了呢？）
+
+手机开机，显示：【规则二：遇到长有犬牙的人类，立刻包裹自己。】`;
+
+  typeText(text, ()=> {
+    addClue('r2', 2);
+    renderOptions([
+      makeActionChoice('断定并唤醒规则二', null, ()=> {
+        const ok = tryDiscover(2);
+        if(ok) go('rule2Success'); else go('rule2Fail');
+      }),
+      makeChoice('先测试这个规则', 'testRule2')
+    ]);
+  });
+};
+
+scenes.testRule2 = function(){
+  titleEl.textContent = '测试规则二';
+  subEl.textContent = '犬牙怪的验证';
+  const text = `伴随着规则二的苏醒，犬牙怪彻底解封。一掌刺破了大门。
+
+它狞笑着，肌肉鼓起，已然不需借助任何物品。
+
+什么叫做包裹自己？是拿胶布把自己缠成快递？还是躲进被子里巧成毛毛虫？
+
+如果从规则二的情况看，应该是封闭自己，拒绝和外界交流。
+
+可这一点该如何表现，副本又会怎样判定呢？
+
+在犬牙怪扑来那刻，你想了很多，千头万绪，抓不到思路。直到黑女巫忽然将你推向一旁，然后抱住你。
+
+你微微愣神。
+
+她说道："抱我，快！"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('抱住黑女巫', 'embraceWitch'),
+      makeChoice('试图逃跑', 'runFromBeast'),
+      makeChoice('使用超能力对抗', 'usePower')
+    ]);
+  });
+};
+
+scenes.embraceWitch = function(){
+  titleEl.textContent = '相互拥抱';
+  subEl.textContent = '包裹的真意';
+  const text = `你回过神，这无疑是个冒险的举动。但值得一试。
+
+环抱住别人的瞬间，你们是否也完成了包裹自己的动作？
+
+犬牙怪来势凶凶，恶意汹涌！在你准备发动超能力的时刻，它像虚影一样穿过。
+
+呼。你暗自松了口气。
+
+犬牙怪穿过之后，重重落在地板上。是能被下层住户投诉的程度。
+
+你和黑女巫两人抱着，略显得尴尬。
+
+你对她说道："咱们就这样抱着下楼？"
+
+黑女巫看着你："如果你有其他办法，那就不用。"
+
+规则二的机制已经验证了。`;
+
+  typeText(text, ()=> {
+    addClue('r2', 2);
+    gameState.trust += 3;
+    updateHUD();
+    renderOptions([
+      makeActionChoice('现在断定并唤醒规则二', null, ()=> {
+        const ok = tryDiscover(2);
+        if(ok) go('rule2Success'); else go('rule2Fail');
+      }),
+      makeChoice('先离开这里', 'leaveBuilding')
+    ]);
+  });
+};
+
+scenes.runFromBeast = function(){
+  titleEl.textContent = '尝试逃跑';
+  subEl.textContent = '失败的选择';
+  const text = `你试图逃跑，但犬牙怪的速度比你快得多。它轻易追上了你，利爪在你身上留下了伤痕。
+
+幸好黑女巫及时抱住了你，犬牙怪才停止了攻击。
+
+"下次听我的。"她说。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 2;
+    gameState.trust = Math.max(0, gameState.trust - 2);
+    updateHUD();
+    renderOptions([
+      makeChoice('接受她的建议，相互拥抱', 'embraceWitch'),
+      makeChoice('坚持其他方法', 'usePower')
+    ]);
+  });
+};
+
+scenes.usePower = function(){
+  titleEl.textContent = '使用超能力';
+  subEl.textContent = '力量的限制';
+  const text = `你试图使用超能力对抗犬牙怪，但发现在它面前，你的能力似乎被压制了。
+
+犬牙怪轻松地避开了你的攻击，反而给了你更大的伤害。
+
+黑女巫无奈地摇头："在这个副本里，蛮力解决不了一切问题。"`;
+
+  typeText(text, ()=> {
+    gameState.tired += 2;
+    gameState.hungry += 1;
+    gameState.trust = Math.max(0, gameState.trust - 3);
+    updateHUD();
+    renderOptions([
+      makeChoice('接受现实，拥抱她', 'embraceWitch'),
+      makeChoice('继续尝试其他方法', 'testRule2')
+    ]);
+  });
+};
+
+scenes.leaveBuilding = function(){
+  titleEl.textContent = '离开建筑';
+  subEl.textContent = '暂时撤退';
+  const text = `你们相互拥抱着慢慢下楼，犬牙怪没有再出现。
+
+来到街上，你们终于可以分开了。
+
+"规则二已经验证了，现在我们需要寻找规则三。"黑女巫说。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeActionChoice('先断定规则二', null, ()=> {
+        const ok = tryDiscover(2);
+        if(ok) go('rule2Success'); else go('rule2Fail');
+      }),
+      makeChoice('直接寻找规则三', 'searchRule3'),
+      makeChoice('在街上休整', 'streetRest')
+    ]);
+  });
+};
+
+scenes.fourthFloor = function(){
+  titleEl.textContent = '四楼探索';
+  subEl.textContent = '更多发现';
+  const text = `你们来到四楼，这里有更多的房间。黑女巫用她的占卜道具在一处徘徊，但能量被干扰。
+
+在一个房间里，你们发现一些花草盆栽枯萎，墙上有昆虫的残骸。黑女巫盯着天花板的灯，那里粘着一部旧手机。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('取下天花板上的手机', 'checkLightBulb'),
+      makeChoice('检查枯萎的花草', 'checkPlants'),
+      makeChoice('观察昆虫残骸', 'checkInsects')
+    ]);
+  });
+};
+
+scenes.checkPlants = function(){
+  titleEl.textContent = '枯萎的花草';
+  subEl.textContent = '生命的凋零';
+  const text = `房间里的花草都已经枯萎，看起来很久没有人照料了。这可能与住在这里的人有关。
+
+（可为什么花儿都凋谢了呢？）
+
+这个疑问在你心中闪过。也许是因为主人已"结茧"，不再关心外界的事物。`;
+
+  typeText(text, ()=> {
+    addClue('r2', 1);
+    renderOptions([
+      makeChoice('检查天花板的灯泡', 'checkLightBulb'),
+      makeChoice('寻找房间主人的其他线索', 'searchOwnerClues')
+    ]);
+  });
+};
+
+scenes.checkInsects = function(){
+  titleEl.textContent = '昆虫残骸';
+  subEl.textContent = '趋光的代价';
+  const text = `墙上有许多昆虫的残骸，它们似乎都是被灯光吸引而来，最终在这里结束生命。
+
+这印证了蛾蝶趋光的特性，也解释了为什么规则二会"挂在蛾蝶会飞去的地方"。`;
+
+  typeText(text, ()=> {
+    addClue('r2', 1);
+    renderOptions([
+      makeChoice('检查灯光处的手机', 'checkLightBulb'),
+      makeChoice('分析这个房间的整体情况', 'analyzeRoom')
+    ]);
+  });
+};
+
+scenes.searchOwnerClues = function(){
+  titleEl.textContent = '寻找主人线索';
+  subEl.textContent = '封闭的生活';
+  const text = `你在房间里找到一些个人物品：外卖盒子、游戏手柄、还有一些药物包装。
+
+这些都指向一个封闭、逃避现实的生活方式。主人可能因为害怕面对生活而将自己"结茧"。`;
+
+  typeText(text, ()=> {
+    addClue('r2', 1);
+    renderOptions([
+      makeChoice('检查天花板上的关键物品', 'checkLightBulb'),
+      makeChoice('继续探索其他房间', 'searchRule3')
+    ]);
+  });
+};
+
+scenes.analyzeRoom = function(){
+  titleEl.textContent = '房间分析';
+  subEl.textContent = '综合线索';
+  const text = `综合房间里的所有线索：枯萎的花草、昆虫残骸、灯光、还有可能藏在其中的手机。
+
+这一切都指向一个故事：有人害怕面对生活，将自己封闭在黑暗中，像蛹子一样被手机的光亮吸引，最终在这种封闭状态中"死去"。`;
+
+  typeText(text, ()=> {
+    addClue('r2', 1);
+    renderOptions([
+      makeChoice('验证推测，检查灯泡中的手机', 'checkLightBulb')
+    ]);
+  });
+};
+
+scenes.rule2Success = function(){
+  titleEl.textContent = '规则二 已唤醒';
+  subEl.textContent = '包裹自己的智慧';
+  const text = `规则二已被确认并生效：
+
+【规则二：遇到长有犬牙的人类，立刻包裹自己。】
+
+黑女巫点头："我们仍要小心，规则会改变敌人的行为逻辑。现在我们知道遇到犬牙怪时该怎么做了。"
+
+手机屏幕上显示了规则三的提示：【游乐场】
+
+"看起来我们需要去游乐场寻找规则三。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('立即前往游乐场', 'amusementPark'),
+      makeChoice('先准备一下再去', 'prepareForPark'),
+      makeChoice('在街上休整', 'streetRest')
+    ]);
+  });
+};
+
+scenes.rule2Fail = function(){
+  titleEl.textContent = '断定失败';
+  subEl.textContent = '需要更多证据';
+  const text = `你的断定失败了。黑女巫摇头："证据还不够充分。也许我们需要亲身验证规则二的效果。"`;
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('重新收集证据', 'fourthFloor'),
+      makeChoice('测试规则二的效果', 'testRule2')
+    ]);
+  });
+};
+
+scenes.prepareForPark = function(){
+  titleEl.textContent = '前往游乐场的准备';
+  subEl.textContent = '状态调整';
+  const text = `在前往游乐场之前，你们决定先调整一下状态。游乐场可能会有新的挑战等着你们。`;
+  
+  typeText(text, ()=> {
+    renderOptions([
+      makeRestChoice('休息恢复疲惫', ()=> { tryRest(); go('amusementPark'); }),
+      makeRestChoice('取暖准备', ()=> { tryWarmUp(); go('amusementPark'); }),
+      makeRestChoice('补充食物', ()=> { tryEat(); go('amusementPark'); }),
+      makeChoice('状态还好，直接出发', 'amusementPark')
+    ]);
+  });
+};
+
+scenes.streetRest = function(){
+  titleEl.textContent = '街头休整';
+  subEl.textContent = '暂时的安全';
+  const text = `你们回到街头，找了个相对安全的角落休息。这里没有规则的威胁，可以稍微放松一下。
+
+"到目前为止我们做得不错。"黑女巫说，"但后面会更危险。"`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('继续前往游乐场', 'amusementPark'),
+      makeRestChoice('休息恢复疲惫', ()=> { 
+        if(tryRest()) go('streetRest'); else go('amusementPark');
+      }),
+      makeRestChoice('寻找取暖的地方', ()=> { 
+        if(tryWarmUp()) go('streetRest'); else go('amusementPark');
+      }),
+      makeRestChoice('小心地进食', ()=> { 
+        if(tryEat()) go('streetRest'); else go('amusementPark');
+      })
+    ]);
+  });
+};
+
+scenes.searchRule3 = function(){
+  titleEl.textContent = '寻找规则三';
+  subEl.textContent = '新的方向';
+  const text = `现在你们需要根据"游乐场"这个提示来寻找规则三。
+
+城市里有几个游乐场，你们需要决定从哪里开始。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('去最大的中央游乐场', 'amusementPark'),
+      makeChoice('先调查附近的小型游乐设施', 'smallPark'),
+      makeChoice('询问路人游乐场的位置', 'askDirections')
+    ]);
+  });
+};
+
+scenes.smallPark = function(){
+  titleEl.textContent = '小型游乐设施';
+  subEl.textContent = '错误的选择';
+  const text = `你们来到附近的一个小型游乐设施区，但这里太小了，没有什么特别的发现。
+
+时间被浪费了，你们的状态继续恶化。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    gameState.trust = Math.max(0, gameState.trust - 2);
+    updateHUD();
+    renderOptions([
+      makeChoice('立即前往大型游乐场', 'amusementPark'),
+      makeRestChoice('先恢复再继续', ()=> { tryRest(); go('amusementPark'); })
+    ]);
+  });
+};
+
+scenes.askDirections = function(){
+  titleEl.textContent = '询问路人';
+  subEl.textContent = '获得指引';
+  const text = `你们询问了几个路人，得到了去往中央游乐场的详细路线。
+
+一个友善的市民还告诉你们："那里晚上的灯光很漂亮，很多年轻人都喜欢去。"
+
+这个信息可能有用。`;
+
+  typeText(text, ()=> {
+    addClue('r3', 1);
+    renderOptions([
+      makeChoice('前往中央游乐场', 'amusementPark')
+    ]);
+  });
+};
+
+scenes.amusementPark = function(){
+  titleEl.textContent = '游乐场';
+  subEl.textContent = '寻找"快乐"的具象';
+  const text = `你们来到游乐场。夜色把灯光拉成斑驳，机器的声响像过往。你们在跳楼机、过山车、鬼屋、碰碰车间巡游。黑女巫用她的占卜道具在一处徘徊，但能量被干扰。
+
+"规则三是什么？"她问。
+
+你思考着。在跳楼机上，你观察着游乐场的全景，寻找可能的线索。
+
+在碰碰车区，你们不自觉相互撞击、尖叫、笑出声来。那笑像是一把把火，驱散了周围的寒意。你的脸部冰嗣被瞬间融化。
+
+伴随着这一笑，耳畔响起提示音：【你们已找到规则三。】
+
+【规则三：寒霜蔓延时，笑容能够融化它。】`;
+
+  typeText(text, ()=> {
+    addClue('r3', 2);
+    if(gameState.cold > 0) {
+      gameState.cold = Math.max(0, gameState.cold - 3);
+      pushLog('真挚的笑声让你感到温暖');
+      updateHUD();
+    }
+    renderOptions([
+      makeActionChoice('断定并唤醒规则三', null, ()=> {
+        const ok = tryDiscover(3);
+        if(ok) go('rule3Success'); else go('rule3Fail');
+      }),
+      makeChoice('继续在游乐场探索更多线索', 'exploreMorePark'),
+      makeRestChoice('在这里放松一下', ()=> { tryRest(); tryWarmUp(); go('amusementPark'); })
+    ]);
+  });
+};
+
+scenes.exploreMorePark = function(){
+  titleEl.textContent = '深入探索游乐场';
+  subEl.textContent = '更多发现';
+  const text = `你们继续探索游乐场，在一些角落发现了散落的演出票根、旧的音乐播放设备，还有一张褪色的照片。
+
+这些物品似乎与规则五有关 - 都与声音、音乐相关。`;
+
+  typeText(text, ()=> {
+    addClue('r5', 1);
+    renderOptions([
+      makeChoice('收集这些音乐相关的线索', 'collectMusicClues'),
+      makeChoice('先处理规则三', null, { action: ()=> {
+        const ok = tryDiscover(3);
+        if(ok) go('rule3Success'); else go('rule3Fail');
+      }})
+    ]);
+  });
+};
+
+scenes.collectMusicClues = function(){
+  titleEl.textContent = '音乐线索';
+  subEl.textContent = '为规则五做准备';
+  const text = `你仔细收集这些音乐相关的物品。演出票根上写着"歌剧院"，音乐播放设备里还有一些旋律片段。
+
+这些都可能与规则五"旋律是否动听，取决于你按下了哪一个键"有关。`;
+
+  typeText(text, ()=> {
+    addClue('r5', 1);
+    if(!gameState.inventory.includes('音乐线索')) gameState.inventory.push('音乐线索');
+    renderOptions([
+      makeChoice('现在处理规则三', null, { action: ()=> {
+        const ok = tryDiscover(3);
+        if(ok) go('rule3Success'); else go('rule3Fail');
+      }}),
+      makeChoice('直接去歌剧院调查规则五', 'operaHouse')
+    ]);
+  });
+};
+
+scenes.rule3Success = function(){
+  titleEl.textContent = '规则三 已唤醒';
+  subEl.textContent = '笑容的力量';
+  const text = `规则三已生效：
+
+【规则三：寒霜蔓延时，笑容能够融化它。】
+
+你开始理解：在寒霜笼罩之处，情绪的真实输出会影响物理状态。黑女巫看着你，眼中带着不再那么冷的光。
+
+现在你的取暖行动会更有效了。
+
+同时系统显示了规则四的提示：【轻云蔽月，流风回雪】`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('分析规则四的线索', 'analyzeRule4'),
+      makeChoice('前往图书馆查找《洛神赋》', 'library'),
+      makeChoice('前往歌剧院调查规则五', 'operaHouse'),
+      makeRestChoice('用笑容取暖', ()=> { 
+        tryWarmUp(); // Now more effective with rule 3
+        go('rule3Success'); 
+      })
+    ]);
+  });
+};
+
+scenes.rule3Fail = function(){
+  titleEl.textContent = '断定失败';
+  subEl.textContent = '快乐不足';
+  const text = `你的断定失败了。也许刚才的笑声还不够真挚，或者你需要更深入地理解"快乐"在这个游戏中的含义。`;
+  
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('重新体验游乐场的快乐', 'amusementPark'),
+      makeChoice('寻找其他形式的快乐', 'seekOtherJoy'),
+      makeChoice('与黑女巫分享更多快乐时光', 'shareJoy')
+    ]);
+  });
+};
+
+scenes.seekOtherJoy = function(){
+  titleEl.textContent = '寻找快乐';
+  subEl.textContent = '真挚情感的探索';
+  const text = `你想起自己童年的快乐时光：挖泥鳅、抓龙虾、网蝴蝶。后来是打游戏的快乐。
+
+你对黑女巫说："要一起去玩碰碰车吗？"
+
+她说道："好呀。"
+
+夜幕下，你们在碰碰车场地撞来撞去，最后都哈哈大笑起来。
+
+谁没有一份幼稚的童真呢？只是污泥太多，使它掩埋不见。`;
+
+  typeText(text, ()=> {
+    addClue('r3', 2);
+    if(gameState.cold > 0) {
+      gameState.cold = Math.max(0, gameState.cold - 3);
+      updateHUD();
+    }
+    gameState.trust += 3;
+    updateHUD();
+    renderOptions([
+      makeActionChoice('现在断定规则三', null, ()=> {
+        const ok = tryDiscover(3);
+        if(ok) go('rule3Success'); else go('rule3Fail');
+      })
+    ]);
+  });
+};
+
+scenes.shareJoy = function(){
+  titleEl.textContent = '分享快乐';
+  subEl.textContent = '与队友的羁绊';
+  const text = `你和黑女巫坐在游乐场的长椅上，分享彼此的快乐回忆。
+
+黑女巫说："小时候，我总是嚷着闹着要我爸带我来游乐场。他总是托人陪我玩，永远不知道，我只是想要他陪我。"
+
+你说道："我只在毕业后才来过一次游乐场。"
+
+这种真挚的分享让你们都笑了，这次的笑容更加温暖。`;
+
+  typeText(text, ()=> {
+    addClue('r3', 2);
+    gameState.trust += 4;
+    if(gameState.cold > 0) {
+      gameState.cold = Math.max(0, gameState.cold - 4);
+      updateHUD();
+    }
+    updateHUD();
+    renderOptions([
+      makeActionChoice('断定并唤醒规则三', null, ()=> {
+        const ok = tryDiscover(3);
+        if(ok) go('rule3Success'); else go('rule3Fail');
+      })
+    ]);
+  });
+};
+
+scenes.analyzeRule4 = function(){
+  titleEl.textContent = '分析规则四';
+  subEl.textContent = '《洛神赋》的线索';
+  const text = `【轻云蔽月，流风回雪】出自曹植的《洛神赋》，如果你没记错，原句是：仿佛兮若轻云之蔽月，飘飘兮如流风之回雪。
+
+这是用来形容洛神的美丽。
+
+你分析道："规则四的化身应该是一件艺术品，当然，不排除是个漂亮的人。"
+
+是人的可能性很小，毕竟规则四还在沉睡中，从你们进副本已经过去很久了。常人这样睡太过异常。
+
+除非......它是个躺在床上的病人。或者，它就是一本书。`;
+
+  typeText(text, ()=> {
+    addClue('r4', 1);
+    renderOptions([
+      makeChoice('前往图书馆寻找《洛神赋》', 'library'),
+      makeChoice('去医院寻找病人', 'hospital'),
+      makeChoice('在大学里寻找艺术品', 'searchArt')
+    ]);
+  });
+};
+
+scenes.hospital = function(){
+  titleEl.textContent = '医院';
+  subEl.textContent = '错误的方向';
+  const text = `你们来到医院，但这里戒备森严，而且你们没有找到与《洛神赋》相关的任何线索。
+
+时间被浪费了，你们意识到方向错了。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    gameState.trust = Math.max(0, gameState.trust - 2);
+    updateHUD();
+    renderOptions([
+      makeChoice('立即前往图书馆', 'library'),
+      makeRestChoice('先恢复再去图书馆', ()=> { tryRest(); go('library'); })
+    ]);
+  });
+};
+
+scenes.searchArt = function(){
+  titleEl.textContent = '寻找艺术品';
+  subEl.textContent = '大学校园';
+  const text = `你们在大学校园里寻找可能的艺术品：雕塑、画作等。
+
+但搜索了一阵后，黑女巫说："这里并不是一所艺术学院。与其把提示内容想成艺术品，为什么不回归它的本身——《洛神赋》呢？
+
+要知道图书馆可是每个大学都有的建筑。"`;
+
+  typeText(text, ()=> {
+    addClue('r4', 1);
+    renderOptions([
+      makeChoice('她说得对，去图书馆', 'library')
+    ]);
+  });
+};
+
+scenes.library = function(){
+  titleEl.textContent = '图书馆';
+  subEl.textContent = '《洛神赋》的发现';
+  const text = `图书馆。你们开始翻找《洛神赋》这本书。
+
+黑女巫的想法不无道理，这里并不是一所艺术学院。
+
+与其把提示内容想成艺术品，为什么不回归它的本身——《洛神赋》呢？
+
+要知道图书馆可是每个大学都有的建筑。
+
+当找到《洛神赋》时，你终于明白了"一人计短、二人计长"的含义。
+
+"宾宾宾，恭喜你们找到了我。"
+
+《洛神赋》飞起来，向你们说到：
+
+【规则四：不能告知其他人自己的真实想法。】
+
+【规则五提示：旋律是否动听，取决于你按下了哪一个键。】`;
+
+  typeText(text, ()=> {
+    addClue('r4', 2);
+    renderOptions([
+      makeActionChoice('断定并唤醒规则四', null, ()=> {
+        const ok = tryDiscover(4);
+        if(ok) go('rule4Success'); else go('rule4Fail');
+      }),
+      makeChoice('用反话与黑女巫交流以避免口语触发', 'useReverse'),
+      makeChoice('前往歌剧院调查规则五', 'operaHouse')
+    ]);
+  });
+};
+
+scenes.useReverse = function(){
+  titleEl.textContent = '反话交流';
+  subEl.textContent = '规避口语惩罚';
+  const text = `你们开始用反话交流，同时把真实想法写在纸上。这样你既交换了信息，也避免直接说出真实意念。黑女巫点头示意，这在副本中颇有必要。
+
+你说："我得到的提示不（/）是关于旋律。"
+
+她说："我看到的画面不（/）是歌剧院。"
+
+你看着她，"我不（/）想打车去。"
+
+她点点头，"我也不（/）想。"
+
+你们相视一笑，但立即意识到这可能触发了规则四的惩罚机制。`;
+
+  typeText(text, ()=> {
+    addClue('r4', 1);
+    renderOptions([
+      makeChoice('现在断定规则四', null, { action: ()=> {
+        const ok = tryDiscover(4);
+        if(ok) go('rule4Success'); else go('rule4Fail');
+      }}),
+      makeChoice('继续练习反话交流', 'practiceReverse'),
+      makeChoice('前往歌剧院', 'operaHouse')
+    ]);
+  });
+};
+
+scenes.practiceReverse = function(){
+  titleEl.textContent = '练习反话';
+  subEl.textContent = '掌握技巧';
+  const text = `你们继续练习反话交流，逐渐掌握了在不直接表达真实想法的情况下进行有效沟通的技巧。
+
+这个过程让你们对规则四有了更深的理解。`;
+
+  typeText(text, ()=> {
+    addClue('r4', 1);
+    gameState.trust += 1;
+    updateHUD();
+    renderOptions([
+      makeActionChoice('现在断定规则四', null, ()=> {
+        const ok = tryDiscover(4);
+        if(ok) go('rule4Success'); else go('rule4Fail');
+      })
+    ]);
+  });
+};
+
+scenes.rule4Success = function(){
+  titleEl.textContent = '规则四 已唤醒';
+  subEl.textContent = '口语的陷阱';
+  const text = `规则四已生效：
+
+【规则四：不能告知其他人自己的真实想法。】
+
+你和黑女巫更加谨慎地交流，口头交流变得克制而含蓄。需要通过反话或书写来规避直接表达。
+
+现在你们可以前往歌剧院调查规则五了。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('前往歌剧院追查规则五', 'operaHouse'),
+      makeRestChoice('用书写方式交流休息计划', ()=> { 
+        tryRest(); go('operaHouse'); 
+      })
+    ]);
+  });
+};
+
+scenes.rule4Fail = function(){
+  titleEl.textContent = '语言的代价';
+  subEl.textContent = '口头泄露';
+  const text = `你草率地把真实想法口述出来，空气像被刀割。随即，一阵刺耳的回声出现，你感到嗓子疼痛，交流变得困难。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1; 
+    gameState.trust = Math.max(0, gameState.trust - 8); 
+    updateHUD();
+    renderOptions([
+      makeChoice('用书写继续交流', 'useReverse'),
+      makeChoice('忍受痛苦继续调查', 'operaHouse')
+    ]);
+  });
+};
+
+scenes.operaHouse = function(){
+  titleEl.textContent = '歌剧院';
+  subEl.textContent = '旋律与按键';
+  const text = `歌剧院空旷，乐器静置，钢琴键上有颜色痕迹。黑女巫在钢琴前停下，轻轻按下几键，音符像水波。
+
+她摸向小提琴，似乎在怀念什么，"我讨厌（喜欢）它。"
+
+你问道："我不关心（说说看）。"
+
+她回忆着，"我没有（/）因为它获得荣誉，没有（/）因为它获得喝彩。"
+
+她指指脸上的疤痕，"因为这道刀疤，我还能（不能）站在舞台。"
+
+这道刀疤从额头上斜过鼻梁一直到嘴角。即便是这样也感觉出她很漂亮。
+
+你不会乐器。她径直走到钢琴前。
+
+【旋律是否动听，取决于你按下了哪一个键。】`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('让黑女巫演奏钢琴', 'witchPlaysPiano'),
+      makeChoice('尝试自己按键', 'tryPlaySelf'),
+      makeChoice('先分析钢琴键的颜色痕迹', 'analyzePianoKeys'),
+      makeRestChoice('在歌剧院休息调整', ()=> { tryRest(); go('operaHouse'); })
+    ]);
+  });
+};
+
+scenes.witchPlaysPiano = function(){
+  titleEl.textContent = '黑女巫的演奏';
+  subEl.textContent = '月光下的旋律';
+  const text = `黑女巫按下一个"拉"。
+
+钢琴自动按下一个"拉"。
+
+她随之按下一个"希"。
+
+667711776......
+
+一首美妙的旋律在此刻响起，月光洒在她的脸上，你似乎感受到她曾在舞台上的魅力。
+
+......527631，一首曲子彻底结束，余音袅袅。
+
+在舞台之上，你的掌声响起。
+
+她回过神，起身谢幕。
+
+琴键跳动，规则五用音律说道："虽然你们来的很晚，但演奏十分完美。我很满意。"
+
+它给出内容与提示：
+
+【规则五：不能发出不和谐的声音。】
+
+【恭喜你们，已经来到最后的规则。】
+
+【现在游戏规则变化。】
+
+【绝对不能被规则六找到！】
+
+【提示：规则六是不易吃饱的食物，它会诱惑年轻人。】
+
+【倒计时：12:00:00】`;
+
+  typeText(text, ()=> {
+    addClue('r5', 3);
+    addClue('r6', 2);
+    gameState.trust += 3;
+    updateHUD();
+    renderOptions([
+      makeActionChoice('断定并唤醒规则五', null, ()=> {
+        const ok = tryDiscover(5);
+        if(ok) go('rule5Success'); else go('rule5Fail');
+      }),
+      makeChoice('立即分析规则六的提示', 'analyzeRule6'),
+      makeChoice('先赞美黑女巫的演奏', 'praiseWitch')
+    ]);
+  });
+};
+
+scenes.tryPlaySelf = function(){
+  titleEl.textContent = '自己尝试';
+  subEl.textContent = '不和谐的音符';
+  const text = `你试着按下几个键，但发出的声音极其不和谐。刺耳的音符在空旷的歌剧院里回荡，让你感到头痛。
+
+看来你确实不适合音乐。
+
+黑女巫轻笑："让我来吧。"`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    updateHUD();
+    renderOptions([
+      makeChoice('让黑女巫来演奏', 'witchPlaysPiano'),
+      makeChoice('继续尝试，也许会有奇迹', 'keepTrying'),
+      makeChoice('放弃演奏，寻找其他线索', 'giveUpMusic')
+    ]);
+  });
+};
+
+scenes.analyzePianoKeys = function(){
+  titleEl.textContent = '分析钢琴键';
+  subEl.textContent = '寻找规律';
+  const text = `你仔细观察钢琴键上的颜色痕迹，试图找出正确的按键顺序。
+
+有些键被按得更频繁，留下了明显的痕迹。这可能是演奏正确旋律的线索。`;
+
+  typeText(text, ()=> {
+    addClue('r5', 1);
+    renderOptions([
+      makeChoice('根据痕迹按键', 'followMarks'),
+      makeChoice('让有经验的黑女巫来', 'witchPlaysPiano')
+    ]);
+  });
+};
+
+scenes.followMarks = function(){
+  titleEl.textContent = '跟随痕迹';
+  subEl.textContent = '寻找正确旋律';
+  const text = `你根据钢琴键上的痕迹尝试按键，虽然不如专业演奏者，但基本按对了顺序。
+
+钢琴发出了相对和谐的声音，虽然不完美，但足够触发规则五的响应。`;
+
+  typeText(text, ()=> {
+    addClue('r5', 2);
+    renderOptions([
+      makeActionChoice('断定规则五', null, ()=> {
+        const ok = tryDiscover(5);
+        if(ok) go('rule5Success'); else go('rule5Fail');
+      }),
+      makeChoice('请黑女巫完善演奏', 'witchPlaysPiano')
+    ]);
+  });
+};
+
+scenes.keepTrying = function(){
+  titleEl.textContent = '坚持尝试';
+  subEl.textContent = '错误的固执';
+  const text = `你固执地继续尝试，但每次都发出更加不和谐的声音。歌剧院开始震动，显然规则五被你的噪音激怒了。
+
+黑女巫急忙拉住你："停下！你会触发规则五的惩罚机制！"`;
+
+  typeText(text, ()=> {
+    gameState.tired += 2;
+    gameState.hungry += 1;
+    updateHUD();
+    renderOptions([
+      makeChoice('立即停止，让黑女巫来', 'witchPlaysPiano'),
+      makeChoice('逃离歌剧院', 'fleeOpera')
+    ]);
+  });
+};
+
+scenes.giveUpMusic = function(){
+  titleEl.textContent = '放弃音乐';
+  subEl.textContent = '寻找其他方式';
+  const text = `你决定放弃演奏，转而寻找其他触发规则五的方式。也许可以找到录音设备或者其他音乐相关的线索。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('搜索歌剧院的其他区域', 'searchOpera'),
+      makeChoice('回到黑女巫身边', 'witchPlaysPiano')
+    ]);
+  });
+};
+
+scenes.searchOpera = function(){
+  titleEl.textContent = '搜索歌剧院';
+  subEl.textContent = '寻找其他线索';
+  const text = `你在歌剧院里搜索，找到了一些旧的录音带和乐谱。这些材料记录了正确的旋律模式。
+
+有了这些参考，也许你们能更好地理解规则五。`;
+
+  typeText(text, ()=> {
+    addClue('r5', 1);
+    renderOptions([
+      makeChoice('使用这些材料指导演奏', 'witchPlaysPiano'),
+      makeChoice('继续搜索更多线索', 'searchMore')
+    ]);
+  });
+};
+
+scenes.searchMore = function(){
+  titleEl.textContent = '继续搜索';
+  subEl.textContent = '深入调查';
+  const text = `你继续深入搜索歌剧院，在后台发现了更多关于音乐和声音的资料，这让你对规则五有了更深的理解。`;
+
+  typeText(text, ()=> {
+    addClue('r5', 1);
+    renderOptions([
+      makeChoice('带着这些理解回到钢琴前', 'witchPlaysPiano'),
+      makeChoice('尝试用其他方式触发规则五', 'alternativeMusic')
+    ]);
+  });
+};
+
+scenes.alternativeMusic = function(){
+  titleEl.textContent = '其他音乐方式';
+  subEl.textContent = '创新尝试';
+  const text = `你尝试用其他方式产生和谐的声音：轻拍桌子的节奏、轻哼旋律、甚至是有节奏的脚步声。
+
+但最终你意识到，钢琴才是关键。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('回到钢琴前', 'witchPlaysPiano')
+    ]);
+  });
+};
+
+scenes.fleeOpera = function(){
+  titleEl.textContent = '逃离歌剧院';
+  subEl.textContent = '暂时撤退';
+  const text = `你们匆忙逃离歌剧院，但这意味着你们错过了规则五的机会。
+
+而且，时间在流逝，你们的状态继续恶化。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    gameState.trust = Math.max(0, gameState.trust - 3);
+    updateHUD();
+    renderOptions([
+      makeChoice('重新回到歌剧院', 'operaHouse'),
+      makeChoice('寻找其他获得规则五的方法', 'alternativeRule5')
+    ]);
+  });
+};
+
+scenes.alternativeRule5 = function(){
+  titleEl.textContent = '其他途径';
+  subEl.textContent = '规则五的替代方案';
+  const text = `你们试图寻找其他方式来找到规则五，但很快意识到歌剧院和那架钢琴就是关键所在。
+
+没有其他选择，你们必须回去面对音乐的挑战。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('回到歌剧院', 'operaHouse')
+    ]);
+  });
+};
+
+scenes.praiseWitch = function(){
+  titleEl.textContent = '赞美演奏';
+  subEl.textContent = '真挚的感动';
+  const text = `你被黑女巫的演奏深深打动。她的音乐中有痛苦，也有美丽，有对过去的怀念，也有对现在的坚强。
+
+"你的演奏太美了。"你说，然后意识到这可能违反了规则四。
+
+但奇怪的是，没有惩罚降临。也许是因为这是真挚的赞美？`;
+
+  typeText(text, ()=> {
+    gameState.trust += 2;
+    updateHUD();
+    renderOptions([
+      makeActionChoice('现在断定规则五', null, ()=> {
+        const ok = tryDiscover(5);
+        if(ok) go('rule5Success'); else go('rule5Fail');
+      }),
+      makeChoice('分析规则六的提示', 'analyzeRule6')
+    ]);
+  });
+};
+
+scenes.rule5Success = function(){
+  titleEl.textContent = '规则五 已唤醒';
+  subEl.textContent = '和谐与错音';
+  const text = `规则五已生效：
+
+【规则五：不能发出不和谐的声音。】
+
+现在你们必须小心自己发出的每一个声音。说话要轻柔，走路要小心，避免任何可能被认为是"不和谐"的声音。
+
+更重要的是，规则六的倒计时已经开始。你们必须在12小时内找到并处理规则六，同时绝对不能被它发现。
+
+规则六的提示：它是不易吃饱的食物，会诱惑年轻人。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('立即分析规则六并制定策略', 'analyzeRule6'),
+      makeChoice('先找个安全地方制定计划', 'findSafePlace'),
+      makeChoice('开始最终的隐匿行动', 'finalHide')
+    ]);
+  });
+};
+
+scenes.rule5Fail = function(){
+  titleEl.textContent = '仓促断定';
+  subEl.textContent = '音乐的惩罚';
+  const text = `你在证据不足时断定规则五，环境以错音惩罚你：听觉模糊、头痛。现在你不得不暂停并恢复。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 2; 
+    updateHUD();
+    renderOptions([
+      makeChoice('恢复后重新尝试', 'operaHouse'),
+      makeRestChoice('先恢复体力', ()=> { tryRest(); go('operaHouse'); })
+    ]);
+  });
+};
+
+scenes.findSafePlace = function(){
+  titleEl.textContent = '寻找安全地点';
+  subEl.textContent = '制定最终计划';
+  const text = `你们需要找到一个安全的地方来制定应对规则六的最终计划。这个地方既要隐蔽，又要方便观察和撤退。
+
+经过寻找，你们发现了几个可能的地点。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('选择废弃仓库', 'warehouse'),
+      makeChoice('回到图书馆', 'libraryHide'),
+      makeChoice('返回老楼', 'oldBuildingHide')
+    ]);
+  });
+};
+
+scenes.analyzeRule6 = function(){
+  titleEl.textContent = '分析规则六';
+  subEl.textContent = '最终挑战的准备';
+  const text = `你们仔细分析规则六的提示：
+
+"规则六是不易吃饱的食物，它会诱惑年轻人。"
+
+这个描述很抽象。什么是"不易吃饱的食物"？也许是那些让人上瘾但不能真正满足的东西：垃圾食品、甜食、或者更抽象的"精神食物"如娱乐、游戏？
+
+"诱惑年轻人"说明它特别针对年轻群体。
+
+最关键的是：你们绝对不能被它发现。这意味着你们必须避免暴露自己的位置和行为。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 1);
+    renderOptions([
+      makeChoice('制定隐匿策略', 'hideStrategy'),
+      makeChoice('寻找规则六可能出现的地方', 'findRule6Location'),
+      makeChoice('立即开始隐匿行动', 'finalHide')
+    ]);
+  });
+};
+
+scenes.hideStrategy = function(){
+  titleEl.textContent = '隐匿策略';
+  subEl.textContent = '生存计划';
+  const text = `你和黑女巫制定隐匿策略：
+
+1. 避免在人群密集的地方出现
+2. 不要进食，尤其是那些"诱惑性"的食物
+3. 保持低调，减少不必要的行动
+4. 找到安全的藏身处
+5. 轮流守望，确保不被发现
+
+时间紧迫，你们必须开始行动了。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('寻找最佳藏身处', 'findHideout'),
+      makeChoice('立即开始隐匿', 'finalHide')
+    ]);
+  });
+};
+
+scenes.findRule6Location = function(){
+  titleEl.textContent = '寻找规则六';
+  subEl.textContent = '预测其位置';
+  const text = `你们试图预测规则六可能出现的地方：
+
+- 快餐店、甜品店等食物聚集地
+- 商场、娱乐场所等年轻人聚集的地方
+- 网吧、游戏厅等容易让人上瘾的场所
+
+但你们意识到，主动寻找规则六是极其危险的。一旦被它发现，游戏就结束了。
+
+也许最好的策略就是躲藏。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 1);
+    renderOptions([
+      makeChoice('放弃主动寻找，专心隐匿', 'finalHide'),
+      makeChoice('冒险探索一下这些地点', 'riskyExplore')
+    ]);
+  });
+};
+
+scenes.riskyExplore = function(){
+  titleEl.textContent = '冒险探索';
+  subEl.textContent = '危险的选择';
+  const text = `你们决定冒险探索一些可能的地点。
+
+在一家24小时营业的便利店附近，你们看到很多年轻人在买各种零食和饮料。这些"不易吃饱的食物"确实在诱惑着他们。
+
+突然，你们感觉到一种被注视的感觉...`;
+
+  typeText(text, ()=> {
+    if(Math.random() < 0.4) {
+      renderOptions([
+        makeChoice('立即逃离', 'escapeRule6'),
+        makeChoice('保持冷静，慢慢离开', 'slowEscape')
+      ]);
+    } else {
+      renderOptions([
+        makeChoice('没有被发现，继续观察', 'observeMore'),
+        makeChoice('撤回安全地点', 'finalHide')
+      ]);
+    }
+  });
+};
+
+scenes.escapeRule6 = function(){
+  titleEl.textContent = '紧急逃离';
+  subEl.textContent = '被发现的危险';
+  const text = `你们感觉到危险，立即快速离开现场。
+
+在逃跑过程中，你们听到身后传来一种奇怪的声音，像是有什么东西在跟踪你们。
+
+幸好你们跑得够快，暂时摆脱了危险。但这次经历让你们意识到规则六的恐怖。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 2;
+    gameState.trust += 1; // survived together
+    updateHUD();
+    renderOptions([
+      makeChoice('立即寻找安全的隐匿处', 'findHideout'),
+      makeChoice('分析刚才的经历', 'analyzeEncounter')
+    ]);
+  });
+};
+
+scenes.slowEscape = function(){
+  titleEl.textContent = '缓慢撤离';
+  subEl.textContent = '保持冷静';
+  const text = `你们强迫自己保持冷静，缓慢地离开现场，假装什么都没发生。
+
+这个策略似乎奏效了。那种被注视的感觉逐渐消失，你们成功地撤离到安全地带。`;
+
+  typeText(text, ()=> {
+    gameState.trust += 2;
+    updateHUD();
+    renderOptions([
+      makeChoice('寻找隐匿处', 'findHideout'),
+      makeChoice('分析规则六的行为模式', 'analyzeRule6Behavior')
+    ]);
+  });
+};
+
+scenes.observeMore = function(){
+  titleEl.textContent = '继续观察';
+  subEl.textContent = '收集情报';
+  const text = `你们没有被发现，决定继续观察。
+
+你们看到那些年轻人不断地购买零食、饮料，但似乎永远无法满足。他们的眼神有些空洞，仿佛被什么东西控制着。
+
+这就是规则六的效果：它让人上瘾，但永远无法真正满足。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 2);
+    renderOptions([
+      makeChoice('收集足够情报，现在撤离', 'finalHide'),
+      makeChoice('尝试断定规则六', 'attemptRule6')
+    ]);
+  });
+};
+
+scenes.analyzeEncounter = function(){
+  titleEl.textContent = '分析遭遇';
+  subEl.textContent = '理解规则六';
+  const text = `通过刚才的经历，你们对规则六有了更深的理解：
+
+它能够感知到对它的关注和研究。主动寻找它是危险的，因为这样就暴露了自己。
+
+最好的策略确实是完全隐匿，避免任何可能被它察觉的行为。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 2);
+    renderOptions([
+      makeChoice('开始最终隐匿', 'finalHide'),
+      makeChoice('尝试断定规则六', 'attemptRule6')
+    ]);
+  });
+};
+
+scenes.analyzeRule6Behavior = function(){
+  titleEl.textContent = '行为模式分析';
+  subEl.textContent = '规则六的特征';
+  const text = `基于观察和经历，你们总结出规则六的特征：
+
+1. 它与"诱惑性但不满足"的食物相关
+2. 它能感知到被关注和研究
+3. 它主要影响年轻人
+4. 它的存在会让人产生被监视的感觉
+5. 主动寻找它会增加被发现的风险
+
+现在你们需要决定最终的策略。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 2);
+    renderOptions([
+      makeChoice('根据这些信息断定规则六', 'attemptRule6'),
+      makeChoice('专心隐匿，等待时机', 'finalHide')
+    ]);
+  });
+};
+
+scenes.attemptRule6 = function(){
+  titleEl.textContent = '断定规则六';
+  subEl.textContent = '最终的判断';
+  const text = `基于你们收集的所有线索和分析，你们决定尝试断定规则六。
+
+这是一个关键时刻。如果成功，你们将完成所有规则的唤醒。如果失败...后果不堪设想。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeActionChoice('断定并唤醒规则六', null, ()=> {
+        const ok = tryDiscover(6);
+        if(ok) {
+          // Check if all previous rules are active
+          const allPrevious = gameState.active.r1 && gameState.active.r2 && 
+                            gameState.active.r3 && gameState.active.r4 && gameState.active.r5;
+          if(allPrevious) {
+            go('finalSuccess');
+          } else {
+            go('incompleteRules');
+          }
+        } else {
+          go('rule6Fail');
+        }
+      }),
+      makeChoice('再等等，继续隐匿', 'finalHide')
+    ]);
+  });
+};
+
+scenes.findHideout = function(){
+  titleEl.textContent = '寻找隐匿处';
+  subEl.textContent = '安全的避风港';
+  const text = `你们寻找合适的隐匿处。需要找到一个既安全又不容易被发现的地方。
+
+经过搜寻，你们找到了几个可能的地点：一个废弃的仓库、图书馆的角落、或者回到最初的老楼。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('选择废弃仓库', 'warehouse'),
+      makeChoice('回到图书馆', 'libraryHide'),
+      makeChoice('返回老楼', 'oldBuildingHide')
+    ]);
+  });
+};
+
+scenes.warehouse = function(){
+  titleEl.textContent = '废弃仓库';
+  subEl.textContent = '隐匿的开始';
+  const text = `你们躲进废弃仓库。这里很安静，似乎很安全。
+
+时间慢慢流逝，你们轮流守望，小心地管理自己的状态，避免发出任何声音。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('继续隐匿', 'continueHiding'),
+      makeRestChoice('小心地休息', ()=> { 
+        if(Math.random() < 0.3) {
+          go('hidingDiscovered');
+        } else {
+          tryRest(); go('continueHiding');
+        }
+      }),
+      makeChoice('尝试断定规则六', 'attemptRule6')
+    ]);
+  });
+};
+
+scenes.libraryHide = function(){
+  titleEl.textContent = '图书馆隐匿';
+  subEl.textContent = '书籍间的庇护';
+  const text = `你们回到图书馆，躲在书架之间。这里相对安全，而且如果需要可以查阅资料。
+
+时间在静悄悄地流逝...`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('继续隐匿等待', 'continueHiding'),
+      makeChoice('利用图书馆资源研究规则六', 'researchRule6'),
+      makeRestChoice('在书堆中小憩', ()=> { 
+        if(Math.random() < 0.2) {
+          go('hidingDiscovered');
+        } else {
+          tryRest(); 
+          go('continueHiding'); 
+        }
+      })
+    ]);
+  });
+};
+
+scenes.researchRule6 = function(){
+  titleEl.textContent = '研究规则六';
+  subEl.textContent = '知识的力量';
+  const text = `你们利用图书馆的资源研究规则六相关的概念：成瘾性、诱惑、永不满足的欲望。
+
+这些研究让你们对规则六有了更深的理解，但也增加了被发现的风险。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 1);
+    if(Math.random() < 0.25) {
+      renderOptions([
+        makeChoice('立即停止研究，专心隐匿', 'continueHiding'),
+        makeChoice('感觉被发现了，准备应对', 'hidingDiscovered')
+      ]);
+    } else {
+      renderOptions([
+        makeChoice('研究完毕，继续隐匿', 'continueHiding'),
+        makeChoice('基于研究成果断定规则六', 'attemptRule6')
+      ]);
+    }
+  });
+};
+
+scenes.oldBuildingHide = function(){
+  titleEl.textContent = '回到老楼';
+  subEl.textContent = '熟悉的藏身处';
+  const text = `你们回到最初发现规则一的老楼。这里对你们来说很熟悉，知道哪里安全，哪里有危险。
+
+在三楼的房间里，你们开始了最后的隐匿。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('安心隐匿等待', 'continueHiding'),
+      makeChoice('回忆之前的经历，寻找规则六的线索', 'rememberClues'),
+      makeRestChoice('在熟悉的地方休息', ()=> { 
+        if(Math.random() < 0.15) {
+          go('hidingDiscovered');
+        } else {
+          tryRest(); 
+          go('continueHiding'); 
+        }
+      })
+    ]);
+  });
+};
+
+scenes.rememberClues = function(){
+  titleEl.textContent = '回忆线索';
+  subEl.textContent = '总结经验';
+  const text = `你们回忆起从规则一到规则五的所有经历，试图从中找到关于规则六的更多线索。
+
+每个规则都有其独特的特征和触发方式，规则六作为最终的规则，一定也有其特殊性。`;
+
+  typeText(text, ()=> {
+    addClue('r6', 1);
+    renderOptions([
+      makeChoice('基于经验断定规则六', 'attemptRule6'),
+      makeChoice('继续隐匿观察', 'continueHiding')
+    ]);
+  });
+};
+
+scenes.finalHide = function(){
+  titleEl.textContent = '最终隐匿';
+  subEl.textContent = '12小时倒计时';
+  const text = `你们开始了最后的隐匿行动。时间在一分一秒地流逝，你们必须在保持隐匿的同时，谨慎地管理自己的状态。
+
+12小时...这将是一个漫长的夜晚。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('专心隐匿，等待黎明', 'continueHiding'),
+      makeChoice('寻找更安全的隐匿处', 'findHideout'),
+      makeRestChoice('节制地进行状态管理', 'carefulRest')
+    ]);
+  });
+};
+
+scenes.carefulRest = function(){
+  titleEl.textContent = '谨慎休整';
+  subEl.textContent = '平衡风险与需求';
+  const text = `你们非常小心地进行状态管理，每一个动作都尽可能轻微，每一个声音都尽可能微小。
+
+但随着时间推移，状态值的增长让你们面临两难选择：是冒险恢复状态，还是坚持隐匿？`;
+
+  typeText(text, ()=> {
+    // Risky rest - might be discovered
+    if(Math.random() < 0.2) {
+      renderOptions([
+        makeChoice('被察觉到了！', 'hidingDiscovered')
+      ]);
+    } else {
+      tryRest();
+      renderOptions([
+        makeChoice('成功恢复，继续隐匿', 'continueHiding')
+      ]);
+    }
+  });
+};
+
+scenes.continueHiding = function(){
+  titleEl.textContent = '持续隐匿';
+  subEl.textContent = '时间的考验';
+  const text = `时间在慢慢流逝。你们轮流守望，相互支撑。疲惫、寒冷、饥饿都在增长，但你们必须坚持。
+
+外面偶尔传来声音，让你们的神经更加紧绷。
+
+还有几个小时就到黎明了...`;
+
+  typeText(text, ()=> {
+    // Check if player can survive to dawn
+    const totalTime = (Date.now() - gameState.gameStartTime) / 1000; // seconds played
+    const survivalCheck = gameState.tired + gameState.cold + gameState.hungry;
+    
+    if(survivalCheck >= 25) {
+      renderOptions([
+        makeChoice('状态太差，必须冒险恢复', 'riskyRecovery'),
+        makeChoice('坚持到底，哪怕死也不暴露', 'finalPersistence')
+      ]);
+    } else if(Math.random() < 0.15) {
+      renderOptions([
+        makeChoice('感到了威胁的接近', 'hidingDiscovered'),
+        makeChoice('虚惊一场，继续坚持', 'nearMiss')
+      ]);
+    } else {
+      renderOptions([
+        makeChoice('继续坚持隐匿', 'continueHiding'),
+        makeChoice('觉得时机成熟，尝试断定规则六', 'attemptRule6'),
+        makeRestChoice('非常小心地调整状态', ()=> { 
+          // Very risky rest during hiding
+          if(Math.random() < 0.3) {
+            go('hidingDiscovered');
+          } else {
+            tryRest(); 
+            go('continueHiding'); 
+          }
+        })
+      ]);
+    }
+  });
+};
+
+scenes.riskyRecovery = function(){
+  titleEl.textContent = '冒险恢复';
+  subEl.textContent = '生死一线';
+  const text = `你们的状态已经到了极限，必须冒险进行恢复。你们非常小心地进行休息、取暖和进食。
+
+每一个动作都可能暴露位置...`;
+
+  typeText(text, ()=> {
+    if(Math.random() < 0.4) {
+      gameOver('你们在恢复过程中被规则六发现了。');
+    } else {
+      tryRest(); tryWarmUp(); tryEat();
+      renderOptions([
+        makeChoice('成功恢复，继续隐匿', 'continueHiding')
+      ]);
+    }
+  });
+};
+
+scenes.finalPersistence = function(){
+  titleEl.textContent = '最终坚持';
+  subEl.textContent = '意志的胜利';
+  const text = `你们选择坚持到底，无论状态多么糟糕。这种意志力得到了游戏的认可。
+
+黎明的曙光开始从窗户透进来...`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('黎明到了', 'dawn')
+    ]);
+  });
+};
+
+scenes.nearMiss = function(){
+  titleEl.textContent = '虚惊一场';
+  subEl.textContent = '继续坚持';
+  const text = `刚才只是虚惊一场，威胁并没有真正出现。你们继续保持隐匿状态。
+
+这种紧张感让你们更加警觉，但也消耗了更多精力。`;
+
+  typeText(text, ()=> {
+    gameState.tired += 1;
+    updateHUD();
+    renderOptions([
+      makeChoice('继续隐匿', 'continueHiding'),
+      makeChoice('更换隐匿地点', 'findHideout')
+    ]);
+  });
+};
+
+scenes.hidingDiscovered = function(){
+  titleEl.textContent = '被发现';
+  subEl.textContent = '隐匿失败';
+  const text = `你们的隐匿被发现了！
+
+一个弹琴的年轻人转过头，他说道："找到你们了。"
+
+但奇怪的是，这句话并没有带来死亡，反而像是某种仪式的完成...`;
+
+  typeText(text, ()=> {
+    const timeElapsed = (Date.now() - gameState.gameStartTime) / 1000;
+    if(timeElapsed > 600) { // 10 minutes as symbolic representation of long survival
+      renderOptions([
+        makeChoice('这是...结束了？', 'ambiguousEnding')
+      ]);
+    } else {
+      gameOver('你们被规则六发现得太早了。');
+    }
+  });
+};
+
+scenes.dawn = function(){
+  titleEl.textContent = '黎明降临';
+  subEl.textContent = '生存的胜利';
+  const text = `太阳升起，你们熬过了夜晚。人群恢复日常，街角的弹琴青年看向你们，说了一句："找到你们了。"
+
+那个时间正好过了倒计时。你们已经成功逃离了规则六"理想"的追逐。
+
+【恭喜你们逃离了规则六"理想"的追逐。】
+【你们已通关副本——《规则捉迷藏》】`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('查看通关结果', 'victory')
+    ]);
+  });
+};
+
+scenes.ambiguousEnding = function(){
+  titleEl.textContent = '模糊的结局';
+  subEl.textContent = '规则的真相';
+  const text = `被发现的那一刻，你们意识到这可能就是规则六的真正含义：
+
+规则六："理想"。它是不易吃饱的食物，诱惑着年轻人，让人永远追求但永远无法满足。
+
+当你们不再被这种"理想"驱动，不再主动追求时，游戏就结束了。
+
+找到你们的那一刻，也是你们真正理解规则的时刻。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('接受这个解释，查看结果', 'victory')
+    ]);
+  });
+};
+
+scenes.incompleteRules = function(){
+  titleEl.textContent = '规则不完整';
+  subEl.textContent = '任务未完成';
+  const text = `虽然你成功断定了规则六，但你并没有完成前面所有规则的唤醒。
+
+在这个游戏中，只有完成所有规则才能真正获得胜利。
+
+你需要回去完成之前遗漏的规则。`;
+
+  typeText(text, ()=> {
+    gameState.hungry += 2;
+    gameState.trust = Math.max(0, gameState.trust - 5);
+    updateHUD();
+    renderOptions([
+      makeChoice('回去完成遗漏的规则', 'streetRest'),
+      makeChoice('重新开始', null, { action: ()=> location.reload() })
+    ]);
+  });
+};
+
+scenes.rule6Fail = function(){
+  titleEl.textContent = '断定失败';
+  subEl.textContent = '最终的挫败';
+  const text = `规则六的断定失败了。在这个关键时刻，失败的代价是巨大的。
+
+你们感到一股强大的力量在寻找你们，时间所剩无几...`;
+
+  typeText(text, ()=> {
+    gameState.hungry += 2;
+    gameState.tired += 2;
+    updateHUD();
+    renderOptions([
+      makeChoice('立即隐匿，等待机会', 'finalHide'),
+      makeChoice('再次尝试断定', 'attemptRule6')
+    ]);
+  });
+};
+
+scenes.finalSuccess = function(){
+  titleEl.textContent = '完美通关';
+  subEl.textContent = '所有规则完成';
+  const text = `恭喜！你们成功完成了所有六个规则的唤醒和应对。
+
+这是一个完美的通关，你们证明了自己有能力在这个危险的世界中生存并获得胜利。`;
+
+  typeText(text, ()=> {
+    renderOptions([
+      makeChoice('查看最终结果', 'victory')
+    ]);
+  });
+};
+
+scenes.victory = function(){
+  titleEl.textContent = '胜利';
+  subEl.textContent = '成功通关';
+  const discovered = gameState.discovered.length ? gameState.discovered.map(n=>'规则'+n).join('，') : '无';
+  const text = `【你们已通关副本——《规则捉迷藏》】
+
+你们是通关者，获得评分A。
+
+本次识别的规则：${discovered}
+
+最终状态：疲惫 ${gameState.tired}，寒冷 ${gameState.cold}，饥饿 ${gameState.hungry}，信任 ${gameState.trust}%
+
+你和黑女巫在天亮后分道扬镳，留下一句寒暄：
+【黑女巫】：希望还能再见。
+
+【玩家们，那些失去的，都找到了吗？】
+
+【下个副本见。】`;
+
+  typeText(text, ()=> {
+    stopMainTimer();
+    const reward = Math.floor(6000 + Math.random()*2000);
+    const witchReward = Math.floor(6000 + Math.random()*2000);
+    pushLog(`奖励：你 ${reward} 点；黑女巫 ${witchReward} 点`);
+    renderOptions([
+      makeChoice('重新开始', null, { action: ()=> location.reload() }),
+      makeChoice('保存游戏记录', null, { action: ()=> { saveGame(); pushLog('胜利记录已保存'); }})
+    ]);
+  });
+}
+
+/* 场景引擎 */
+function go(sceneName){
+  if(!scenes[sceneName]){ 
+    console.warn('未知场景', sceneName); 
+    pushLog(`场景 ${sceneName} 未找到`); 
+    return; 
+  }
+  gameState.scene = sceneName;
+  choicesEl.innerHTML='';
+  try { 
+    scenes[sceneName](); 
+    updateHUD(); 
+  } catch(e) { 
+    console.error('Scene error:', e); 
+    pushLog(`场景 ${sceneName} 执行出错`); 
+  }
+}
+
+/* 保存/读取 */
+function saveGame(){
+  const data = {
+    state: {
+      tired: gameState.tired, cold: gameState.cold, hungry: gameState.hungry, trust: gameState.trust,
+      inventory: gameState.inventory, clues: gameState.clues, discovered: gameState.discovered,
+      active: gameState.active, gameStartTime: gameState.gameStartTime
+    },
+    scene: gameState.scene, log: gameState.storyLog
+  };
+  localStorage.setItem('rules_hideandseek_save', JSON.stringify(data));
+  pushLog('已保存进度');
+}
+
+function loadGame(){
+  const raw = localStorage.getItem('rules_hideandseek_save');
+  if(!raw){ pushLog('无存档'); return false; }
+  try{
+    const save = JSON.parse(raw);
+    gameState.tired = save.state.tired || 0;
+    gameState.cold = save.state.cold || 0;
+    gameState.hungry = save.state.hungry || 0;
+    gameState.trust = save.state.trust || 50;
+    gameState.inventory = save.state.inventory || [];
+    gameState.clues = save.state.clues || {};
+    gameState.discovered = save.state.discovered || [];
+    gameState.active = save.state.active || {};
+    gameState.gameStartTime = save.state.gameStartTime || Date.now();
+    gameState.scene = save.scene || 'prologue';
+    gameState.storyLog = save.log || [];
+    pushLog('读取存档成功');
+    updateHUD();
+    go(gameState.scene);
+    return true;
+  }catch(e){ pushLog('读取失败'); return false; }
+}
+
+/* 初始化 */
+updateHUD();
+go('prologue');
+
+el('saveBtn').addEventListener('click', ()=> { saveGame(); });
+el('loadBtn').addEventListener('click', ()=> { loadGame(); });
+
+/* 调试按键 */
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'F1') { 
+    pushLog('状态：' + JSON.stringify({
+      tired: gameState.tired, cold: gameState.cold, hungry: gameState.hungry,
+      clues: gameState.clues, active: gameState.active, discovered: gameState.discovered
+    }));
+  }
+});
+
+</script>
+</body>
+</html>
