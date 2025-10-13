@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能菜品推荐 - CookLikeHOC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .preference-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .preference-form h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .recommend-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        
+        .recommend-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .recommend-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .results h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .recipe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .recipe-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .recipe-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .recipe-category {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .recipe-match {
+            color: #28a745;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .recipe-tags {
+            margin-bottom: 15px;
+        }
+        
+        .tag {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .view-recipe-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .view-recipe-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .reset-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .reset-btn:hover {
+            background: #5a6268;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .recipe-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍳 智能菜品推荐</h1>
+            <p>根据您的口味偏好，为您推荐最合适的菜品</p>
+        </div>
+        
+        <div class="preference-form">
+            <h2>选择您的偏好</h2>
+            
+            <div class="form-group">
+                <label>口味偏好：</label>
+                <select id="taste">
+                    <option value="">请选择</option>
+                    <option value="清淡">清淡</option>
+                    <option value="酸甜">酸甜</option>
+                    <option value="香辣">香辣</option>
+                    <option value="麻辣">麻辣</option>
+                    <option value="咸香">咸香</option>
+                    <option value="酱香">酱香</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>偏好的食材：</label>
+                <input 
+                    type="text" 
+                    id="ingredients" 
+                    placeholder="例如：鸡肉、豆腐、蔬菜"
+                >
+            </div>
+
+            <div class="form-group">
+                <label>菜品类型：</label>
+                <select id="type">
+                    <option value="">请选择</option>
+                    <option value="炒菜">炒菜</option>
+                    <option value="炖菜">炖菜</option>
+                    <option value="蒸菜">蒸菜</option>
+                    <option value="汤类">汤类</option>
+                    <option value="主食">主食</option>
+                    <option value="凉拌">凉拌</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>辣度偏好：</label>
+                <select id="spiciness">
+                    <option value="">请选择</option>
+                    <option value="不辣">不辣</option>
+                    <option value="微辣">微辣</option>
+                    <option value="中辣">中辣</option>
+                    <option value="重辣">重辣</option>
+                </select>
+            </div>
+
+            <button id="recommendBtn" class="recommend-btn">开始推荐</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <h2>正在为您推荐菜品...</h2>
+        </div>
+
+        <div id="results" class="results">
+            <h2>为您推荐的菜品</h2>
+            <div id="recipeGrid" class="recipe-grid"></div>
+            <div style="text-align: center;">
+                <button id="resetBtn" class="reset-btn">重新选择</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 菜品数据库（基于您的项目结构）
+        const recipes = [
+            {
+                title: "菠萝咕咾肉",
+                category: "炒菜",
+                tags: ["酸甜", "鸡肉", "菠萝", "果味"],
+                link: "炒菜/菠萝咕咾肉.md",
+                taste: "酸甜",
+                ingredients: ["鸡肉", "菠萝"],
+                type: "炒菜",
+                spiciness: "不辣"
+            },
+            {
+                title: "麻婆豆腐",
+                category: "炖菜",
+                tags: ["麻辣", "豆腐", "川菜", "下饭菜"],
+                link: "炖菜/麻婆豆腐.md",
+                taste: "麻辣",
+                ingredients: ["豆腐"],
+                type: "炖菜",
+                spiciness: "中辣"
+            },
+            {
+                title: "鱼香肉丝",
+                category: "炒菜",
+                tags: ["鱼香", "猪肉", "川菜", "下饭菜"],
+                link: "炒菜/鱼香肉丝.md",
+                taste: "咸香",
+                ingredients: ["猪肉"],
+                type: "炒菜",
+                spiciness: "微辣"
+            },
+            {
+                title: "清炒西兰花",
+                category: "炒菜",
+                tags: ["清淡", "蔬菜", "健康", "素食"],
+                link: "炒菜/清炒西兰花.md",
+                taste: "清淡",
+                ingredients: ["西兰花"],
+                type: "炒菜",
+                spiciness: "不辣"
+            },
+            {
+                title: "老鸡汤",
+                category: "汤类",
+                tags: ["清淡", "鸡肉", "滋补", "汤品"],
+                link: "汤/老鸡汤.md",
+                taste: "清淡",
+                ingredients: ["鸡肉"],
+                type: "汤类",
+                spiciness: "不辣"
+            },
+            {
+                title: "香辣鸡丁拌面",
+                category: "主食",
+                tags: ["香辣", "鸡肉", "面条", "主食"],
+                link: "主食/香辣鸡丁拌面.md",
+                taste: "香辣",
+                ingredients: ["鸡肉", "面条"],
+                type: "主食",
+                spiciness: "中辣"
+            },
+            {
+                title: "口水鸡",
+                category: "凉拌",
+                tags: ["麻辣", "鸡肉", "凉菜", "川菜"],
+                link: "凉拌/口水鸡.md",
+                taste: "麻辣",
+                ingredients: ["鸡肉"],
+                type: "凉拌",
+                spiciness: "中辣"
+            },
+            {
+                title: "蒜蓉粉丝虾",
+                category: "蒸菜",
+                tags: ["咸香", "虾", "海鲜", "蒸菜"],
+                link: "蒸菜/蒜蓉粉丝虾.md",
+                taste: "咸香",
+                ingredients: ["虾"],
+                type: "蒸菜",
+                spiciness: "不辣"
+            }
+        ];
+
+        // 推荐算法
+        function calculateMatchScore(recipe, preferences) {
+            let score = 0;
+            
+            // 口味匹配（40%）
+            if (preferences.taste && recipe.taste === preferences.taste) {
+                score += 40;
+            }
+            
+            // 食材匹配（30%）
+            if (preferences.ingredients) {
+                const userIngredients = preferences.ingredients.toLowerCase().split(/[,\s]+/);
+                const recipeIngredients = recipe.ingredients.map(i => i.toLowerCase());
+                
+                let ingredientMatch = 0;
+                userIngredients.forEach(userIng => {
+                    if (recipeIngredients.some(recipeIng => recipeIng.includes(userIng))) {
+                        ingredientMatch++;
+                    }
+                });
+                
+                if (ingredientMatch > 0) {
+                    score += 30 * (ingredientMatch / userIngredients.length);
+                }
+            }
+            
+            // 类型匹配（20%）
+            if (preferences.type && recipe.type === preferences.type) {
+                score += 20;
+            }
+            
+            // 辣度匹配（10%）
+            if (preferences.spiciness && recipe.spiciness === preferences.spiciness) {
+                score += 10;
+            }
+            
+            return Math.min(100, Math.round(score));
+        }
+
+        // 获取推荐
+        function getRecommendations() {
+            const preferences = {
+                taste: document.getElementById('taste').value,
+                ingredients: document.getElementById('ingredients').value,
+                type: document.getElementById('type').value,
+                spiciness: document.getElementById('spiciness').value
+            };
+
+            // 显示加载中
+            document.querySelector('.preference-form').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            // 模拟加载延迟
+            setTimeout(() => {
+                const recommendedRecipes = recipes.map(recipe => ({
+                    ...recipe,
+                    matchScore: calculateMatchScore(recipe, preferences)
+                }))
+                .filter(recipe => recipe.matchScore > 0)
+                .sort((a, b) => b.matchScore - a.matchScore)
+                .slice(0, 6);
+
+                displayResults(recommendedRecipes);
+            }, 1000);
+        }
+
+        // 显示结果
+        function displayResults(recipes) {
+            const recipeGrid = document.getElementById('recipeGrid');
+            recipeGrid.innerHTML = '';
+
+            if (recipes.length === 0) {
+                recipeGrid.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">没有找到匹配的菜品，请调整您的偏好设置</p>';
+            } else {
+                recipes.forEach(recipe => {
+                    const card = document.createElement('div');
+                    card.className = 'recipe-card';
+                    card.innerHTML = `
+                        <h3>${recipe.title}</h3>
+                        <p class="recipe-category">${recipe.category}</p>
+                        <p class="recipe-match">匹配度: ${recipe.matchScore}%</p>
+                        <div class="recipe-tags">
+                            ${recipe.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                        <a href="#" class="view-recipe-btn" onclick="return showRecipeLocation('${recipe.link}');">查看食谱位置</a>
+                    `;
+                    recipeGrid.appendChild(card);
+                });
+            }
+
+            // 显示结果区域
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+        }
+
+        // 重置选择
+        function resetPreferences() {
+            document.getElementById('taste').value = '';
+            document.getElementById('ingredients').value = '';
+            document.getElementById('type').value = '';
+            document.getElementById('spiciness').value = '';
+            
+            document.querySelector('.preference-form').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        // 显示食谱文件位置
+        function showRecipeLocation(filePath) {
+            // 创建完整的文件路径
+            const fullPath = window.location.origin + '/' + filePath;
+            
+            // 显示友好的提示信息
+            alert('📁 食谱文件位置：\\n' + 
+                  '────────────────────\\n' +
+                  '文件名：' + filePath.split('/').pop() + '\\n' +
+                  '文件夹：' + filePath.split('/')[0] + '\\n' +
+                  '────────────────────\\n' +
+                  '请按以下步骤查看：\\n' +
+                  '1. 打开文件资源管理器\\n' +
+                  '2. 进入 e:\\\\CookLikeHOC-main\\\\ 目录\\n' +
+                  '3. 找到 ' + filePath + ' 文件\\n' +
+                  '4. 双击即可打开查看');
+            
+            return false; // 阻止默认链接行为
+        }
+
+        // 事件监听
+        document.getElementById('recommendBtn').addEventListener('click', getRecommendations);
+        document.getElementById('resetBtn').addEventListener('click', resetPreferences);
+
+        // 支持回车键触发推荐
+        document.getElementById('ingredients').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getRecommendations();
+            }
+        });
+    </script>
+</body>
+</html>
