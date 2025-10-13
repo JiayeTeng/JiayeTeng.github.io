@@ -1,280 +1,312 @@
-/* 全局样式重置 */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f0f0f0;
-    overflow: hidden;
-}
-
-/* 游戏容器 */
-.game-container {
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-/* 游戏界面通用样式 */
-.game-screen {
-    width: 100%;
-    max-width: 800px;
-    height: 100%;
-    max-height: 600px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* 主菜单样式 */
-#mainMenu h1 {
-    font-size: 4rem;
-    color: #333;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-#mainMenu h2 {
-    font-size: 1.5rem;
-    color: #666;
-    margin-bottom: 40px;
-    font-weight: 300;
-}
-
-.menu-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.menu-buttons button,
-#backToMenuBtn,
-#restartGameBtn,
-#backToMainBtn,
-.control-btn {
-    padding: 12px 30px;
-    font-size: 1.2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    outline: none;
-}
-
-.menu-buttons button:hover,
-#backToMenuBtn:hover,
-#restartGameBtn:hover,
-#backToMainBtn:hover,
-.control-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.menu-buttons button:active,
-#backToMenuBtn:active,
-#restartGameBtn:active,
-#backToMainBtn:active,
-.control-btn:active {
-    transform: translateY(0);
-}
-
-.game-stats {
-    text-align: center;
-    font-size: 1.1rem;
-    color: #333;
-}
-
-.game-stats p {
-    margin: 5px 0;
-}
-
-.game-stats span {
-    font-weight: bold;
-    color: #667eea;
-}
-
-/* 角色选择界面样式 */
-#characterSelect h2 {
-    font-size: 2rem;
-    color: #333;
-    margin-bottom: 30px;
-}
-
-.character-list {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 40px;
-}
-
-.character-option {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 10px;
-    border-radius: 10px;
-}
-
-.character-option:hover {
-    transform: scale(1.05);
-    background: rgba(102, 126, 234, 0.1);
-}
-
-.character-option.active {
-    background: rgba(102, 126, 234, 0.2);
-    border: 2px solid #667eea;
-}
-
-.character-preview {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 10px;
-    border-radius: 50%;
-}
-
-.character-preview.default {
-    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
-}
-
-.character-preview.blue {
-    background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
-}
-
-.character-preview.red {
-    background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
-}
-
-/* 游戏界面样式 */
-#gameScreen {
-    padding: 10px;
-}
-
-.game-info {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    padding: 10px;
-    background: rgba(102, 126, 234, 0.1);
-    border-radius: 10px;
-}
-
-.score-display,
-.powerups-display {
-    display: flex;
-    gap: 20px;
-}
-
-.score-display p,
-.powerups-display p {
-    font-size: 1.1rem;
-    color: #333;
-}
-
-.score-display span,
-.powerups-display span {
-    font-weight: bold;
-    color: #667eea;
-}
-
-#gameCanvas {
-    border: 2px solid #667eea;
-    border-radius: 10px;
-    background: #f8f9fa;
-}
-
-.game-controls {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-}
-
-.control-btn.jump {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
-}
-
-/* 游戏结束界面样式 */
-#gameOver h2 {
-    font-size: 2.5rem;
-    color: #e74c3c;
-    margin-bottom: 30px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.final-stats {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.final-stats p {
-    font-size: 1.5rem;
-    margin: 10px 0;
-    color: #333;
-}
-
-.final-stats span {
-    font-weight: bold;
-    color: #667eea;
-}
-
-.end-buttons {
-    display: flex;
-    gap: 20px;
-}
-
-/* 响应式设计 */
-@media (max-width: 900px) {
-    #mainMenu h1 {
-        font-size: 3rem;
-    }
-    
-    .game-info {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .score-display,
-    .powerups-display {
-        justify-content: center;
-    }
-}
-
-@media (max-width: 600px) {
-    #mainMenu h1 {
-        font-size: 2.5rem;
-    }
-    
-    .character-list {
-        flex-direction: column;
-    }
-    
-    .end-buttons {
-        flex-direction: column;
-    }
-    
-    #gameCanvas {
-        width: 100%;
-        height: auto;
-    }
-}
+	font-family: 'Roboto', sans-serif;
+	font-weight: 300;
+	font-size: 16px;
+	padding-top: 70px;
+  }
+  
+  p {
+	text-align: justify;
+  }
+  
+  #header {
+	margin-top: 20px;
+	margin-bottom: 20px;
+  }
+  
+  h1 {
+	font-size: 30px;
+	font-weight: 300;
+	text-align: center;
+  }
+  
+  h2 {
+	font-size: 25px;
+	/* font-weight: 300; */
+	font-weight: bold;
+	color: #8c1515;
+  }
+  
+  h3 {
+	font-size: 20px;
+	font-weight: bold;
+  }
+  
+  .lhead {
+	font-weight: normal;
+	margin-top: 5px;
+  }
+  
+  .litem {
+	margin-top: 5px;
+  }
+  
+  #footer {
+	height: 100px;
+	padding-top: 50px;
+	text-align: center;
+	position: relative;
+  }
+  
+  .instructorphoto img {
+	width: 120px;
+	height: 120px;
+	object-fit: cover;
+	object-position: top;
+	border-radius: 100px;
+	margin-bottom: 10px;
+  }
+  
+  .logo-left {
+	height:60px;
+	float: left;
+	margin-left: 50px;
+  }
+  
+  .logo-right {
+	height:60px;
+	float: right;
+	margin-right: 50px;
+  }
+  
+  .instructor {
+	display: inline-block;
+	width: 140px;
+	text-align: center;
+	margin-right: 20px;
+	margin-bottom: 5px;
+	font-size: 14px;
+  }
+  
+  .sec {
+	margin-bottom: 10px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+  }
+  
+  .sechighlight {
+	background-color: #f7f6f1;
+  }
+  
+  .tt {
+	color: #060;
+	display: inline-block;
+  }
+  
+  #inputlayer {
+	width: 65px;
+  }
+  
+  .layer {
+	width: 35px;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: 10px;
+	margin-bottom: 5px;
+  }
+  
+  .actmap {
+	display: block;
+	border: 2px solid #FFF;
+  }
+  
+  #convnetvis {
+	text-align: center;
+  }
+  
+  .pp {
+	color: white;
+	text-align: left;
+	padding: 5px;
+	height: 32px;
+	margin: 2px;
+	background-color: rgb(85,187,85);
+	overflow: visible !important;
+  }
+  
+  #convask {
+	position: absolute;
+	top: 360px;
+	right: 16px;
+	color: white;
+	font-size: 25px;
+	cursor: pointer;
+  }
+  
+  #explain {
+	display: none;
+	background-color: #FF9;
+	border-radius: 10px;
+	margin: 10px;
+	padding: 10px;
+  }
+  .qq {
+	color: #060;
+  }
+  .qa {
+	font-style: italic;
+  }
+  .qqa {
+	margin-bottom: 20px;
+  }
+  .spanh {
+	font-weight: normal;
+  }
+  
+  #coursedesc {
+	text-align: justify;
+  }
+  
+  #classicons {
+	position: absolute;
+	bottom: 20px;
+	right: 20px;
+  }
+  
+  .bold { font-weight: bold; }
+  .red { color: #FF0000; }
+  
+  /* Navbar color / spacing */
+  .navbar-default {
+	background-color: #8c1515;
+	border-color: #c0392b;
+	text-align: center;
+  }
+  .navbar-default .navbar-brand {
+	color: #ecf0f1;
+	font-weight: bold;
+  }
+  .navbar-default .navbar-brand:hover,
+  .navbar-default .navbar-brand:focus {
+	color: #fbcbcc;
+  }
+  .navbar-default .navbar-text {
+	color: #ecf0f1;
+  }
+  .navbar-default .navbar-collapse > ul {
+	width: 80%;
+  }
+  .navbar-default .navbar-collapse > ul > li {
+	width: 16%;
+  }
+  .navbar-default .navbar-nav > li > a {
+	color: #ecf0f1;
+  }
+  .navbar-default .navbar-nav > li > a:hover,
+  .navbar-default .navbar-nav > li > a:focus {
+	color: #fbcbcc;
+  }
+  .navbar-default .navbar-nav > .active > a,
+  .navbar-default .navbar-nav > .active > a:hover,
+  .navbar-default .navbar-nav > .active > a:focus {
+	color: #fbcbcc;
+	background-color: #c0392b;
+  }
+  .navbar-default .navbar-nav > .open > a,
+  .navbar-default .navbar-nav > .open > a:hover,
+  .navbar-default .navbar-nav > .open > a:focus {
+	color: #fbcbcc;
+	background-color: #c0392b;
+  }
+  .navbar-default .navbar-toggle {
+	border-color: #c0392b;
+  }
+  .navbar-default .navbar-toggle:hover,
+  .navbar-default .navbar-toggle:focus {
+	background-color: #c0392b;
+  }
+  .navbar-default .navbar-toggle .icon-bar {
+	background-color: #ecf0f1;
+  }
+  .navbar-default .navbar-collapse,
+  .navbar-default .navbar-form {
+	border-color: #ecf0f1;
+  }
+  .navbar-default .navbar-link {
+	color: #ecf0f1;
+  }
+  .navbar-default .navbar-link:hover {
+	color: #fbcbcc;
+  }
+  
+  /* Handle formatting on mobile */
+  @media (max-width: 767px) {
+	.navbar-default .navbar-collapse > ul > li {
+	  width: 100%;
+	  text-align: left;
+	}
+  
+	/* Force table to not be like tables anymore */
+	table, thead, tbody, th, td, tr {
+	  display: block;
+	}
+  
+	/* Hide table headers (but not display: none;, for accessibility) */
+	thead tr {
+	  position: absolute;
+	  top: -9999px;
+	  left: -9999px;
+	}
+  
+	/* Make each row look like a card */
+	table tr {
+	  margin-bottom: 20px;
+	  border-bottom: 2px solid #ddd;
+	  box-shadow: 2px 2px 1px #dadada;
+	}
+  
+	tr { border: 1px solid #ccc; }
+  
+	/* Behave  like a "row" */
+	td {
+	  border: none;
+	  border-bottom: 1px solid #eee;
+	  position: relative;
+	  padding-left: 50%;
+	}
+  
+	/* Position table header as data labels */
+	td:before {
+	  top: 6px;
+	  left: 6px;
+	  width: 45%;
+	  padding-right: 10px;
+	  white-space: nowrap;
+	}
+  
+	/* Label the data */
+	#schedule td:nth-of-type(1) { font-weight: 500; }
+	#schedule td:nth-of-type(1):before {
+	  content: "Date:";
+	  font-weight: 300;
+	}
+	#schedule td:nth-of-type(2) { font-weight: 500; }
+	#schedule td:nth-of-type(2):before {
+	  content: "Description:";
+	  font-weight: 300;
+	}
+	#schedule td:nth-of-type(4):before { content: "Events:"; }
+	#schedule td:nth-of-type(5):before { content: "Deadlines:"; }
+  }
+  
+  #unreleased-message {
+	background: #d62728;
+	box-sizing: border-box;
+	color: #fff;
+	font-weight: bold;
+	text-align: center;
+	left: 0;
+	min-height: 3em;
+	padding: 0.5em;
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+	z-index: 10000;
+  }
+  #unreleased-message + div {
+	margin-top: 3em;
+  }
+  #unreleased-message a {
+	color: #fff;
+	text-decoration:underline;
+  }
