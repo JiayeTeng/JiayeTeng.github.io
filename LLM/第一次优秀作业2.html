@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迷你跑酷 - Mini Marathon</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 游戏容器 -->
+    <div class="game-container">
+        <!-- 主菜单界面 -->
+        <div id="mainMenu" class="game-screen">
+            <h1>迷你跑酷</h1>
+            <h2>Mini Marathon</h2>
+            <div class="menu-buttons">
+                <button id="startGameBtn">开始游戏</button>
+                <button id="characterSelectBtn">角色选择</button>
+                <button id="exitGameBtn">退出</button>
+            </div>
+            <div class="game-stats">
+                <p>总金币: <span id="totalCoinsDisplay">0</span></p>
+                <p>最高分: <span id="highScoreDisplay">0</span></p>
+                <p>最高距离: <span id="highDistanceDisplay">0</span>米</p>
+            </div>
+        </div>
+
+        <!-- 角色选择界面 -->
+        <div id="characterSelect" class="game-screen hidden">
+            <h2>选择角色</h2>
+            <div class="character-list">
+                <div class="character-option active" data-character="default">
+                    <div class="character-preview default"></div>
+                    <p>默认角色</p>
+                </div>
+                <div class="character-option" data-character="blue">
+                    <div class="character-preview blue"></div>
+                    <p>蓝色角色</p>
+                </div>
+                <div class="character-option" data-character="red">
+                    <div class="character-preview red"></div>
+                    <p>红色角色</p>
+                </div>
+            </div>
+            <button id="backToMenuBtn">返回菜单</button>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="gameScreen" class="game-screen hidden">
+            <div class="game-info">
+                <div class="score-display">
+                    <p>分数: <span id="currentScore">0</span></p>
+                    <p>金币: <span id="currentCoins">0</span></p>
+                    <p>距离: <span id="currentDistance">0</span>米</p>
+                </div>
+                <div class="powerups-display">
+                    <p>磁铁: <span id="magnetCount">0</span></p>
+                    <p>火箭: <span id="rocketCount">0</span></p>
+                    <p>护盾: <span id="shieldCount">0</span></p>
+                </div>
+            </div>
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+            <div class="game-controls">
+                <button id="pauseGameBtn" class="control-btn">暂停</button>
+                <button id="jumpBtn" class="control-btn jump">跳跃</button>
+            </div>
+        </div>
+
+        <!-- 游戏结束界面 -->
+        <div id="gameOver" class="game-screen hidden">
+            <h2>游戏结束</h2>
+            <div class="final-stats">
+                <p>最终得分: <span id="finalScore">0</span></p>
+                <p>收集金币: <span id="finalCoins">0</span></p>
+                <p>最高分: <span id="finalHighScore">0</span></p>
+                <p>最终距离: <span id="finalDistance">0</span>米</p>
+            </div>
+            <div class="end-buttons">
+                <button id="restartGameBtn">重新开始</button>
+                <button id="backToMainBtn">返回主菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
